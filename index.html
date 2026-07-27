@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目跟进表 — 网页版</title>
+<style>
+:root {
+  --bg: #f0f2f5;
+  --surface: #ffffff;
+  --ink: #1f2937;
+  --muted: #6b7280;
+  --rule: #e5e7eb;
+  --accent: #2563eb;
+  --accent2: #dc2626;
+  --warn: #f59e0b;
+  --success: #059669;
+  --info: #0891b2;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.6;
+  font-size: 14px;
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+/* Header */
+header {
+  background: linear-gradient(135deg, #1F4E79 0%, #2E75B6 100%);
+  color: white;
+  padding: 20px 24px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(31,78,121,0.2);
+}
+header h1 { font-size: 20px; font-weight: 700; }
+header .meta { font-size: 12px; opacity: 0.85; margin-top: 6px; }
+
+/* Nav */
+.nav {
+  display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+}
+.nav-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: white;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  transition: all 0.2s;
+}
+.nav-btn:hover { background: #f8fafc; }
+.nav-btn.active {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+}
+
+/* Stats */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  border-top: 3px solid var(--rule);
+}
+.stat-card.p0 { border-top-color: var(--accent2); }
+.stat-card.p1 { border-top-color: var(--warn); }
+.stat-card.p2 { border-top-color: var(--accent); }
+.stat-card.done { border-top-color: var(--success); }
+.stat-card .number { font-size: 26px; font-weight: 700; color: var(--ink); }
+.stat-card .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* Section */
+.section {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.section-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.section-header h2 { font-size: 16px; font-weight: 700; }
+
+/* Buttons */
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { background: #047857; }
+.btn-danger { background: var(--accent2); color: white; }
+.btn-danger:hover { background: #b91c1c; }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-ghost { background: #f1f5f9; color: var(--ink); }
+.btn-ghost:hover { background: #e2e8f0; }
+
+/* Filters */
+.filters {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filters select, .filters input {
+  padding: 6px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+}
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+th {
+  background: #f8fafc;
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+}
+tr:hover td { background: #f8fafc; }
+
+/* Tags */
+.tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.tag-p0 { background: #fee2e2; color: #991b1b; }
+.tag-p1 { background: #fef3c7; color: #92400e; }
+.tag-p2 { background: #dbeafe; color: #1e40af; }
+.tag-p3 { background: #f3f4f6; color: #374151; }
+.tag-done { background: #d1fae5; color: #065f46; }
+.tag-cancel { background: #e5e7eb; color: #6b7280; }
+.tag-进行中 { background: #dbeafe; color: #1e40af; }
+.tag-未开始 { background: #f3f4f6; color: #6b7280; }
+.tag-file { background: #e0e7ff; color: #3730a3; }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 100;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-header h3 { font-size: 16px; }
+.modal-close {
+  background: none; border: none; font-size: 24px; cursor: pointer;
+  color: var(--muted); line-height: 1;
+}
+.modal-body { padding: 20px; }
+.form-group { margin-bottom: 16px; }
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.form-group textarea { resize: vertical; min-height: 80px; }
+.modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Timeline */
+.timeline-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.timeline-item:last-child { border-bottom: none; }
+.timeline-date {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.timeline-content { font-size: 13px; color: var(--ink); }
+.timeline-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* Empty state */
+.empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* ===== Company Group ===== */
+.company-group {
+  border-bottom: 1px solid var(--rule);
+}
+.company-group:last-child { border-bottom: none; }
+.company-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: #f8fafc;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+.company-header:hover { background: #f1f5f9; }
+.company-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.company-header .company-count {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.company-header .chevron {
+  font-size: 16px;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+.company-header.collapsed .chevron {
+  transform: rotate(-90deg);
+}
+.company-projects {
+  transition: max-height 0.3s ease, opacity 0.2s ease;
+  overflow: hidden;
+}
+.company-projects.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* Project card */
+.project-card {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+.project-card:last-child { border-bottom: none; }
+.project-title { font-weight: 700; font-size: 14px; }
+.project-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.project-desc { font-size: 13px; color: var(--ink); margin-top: 6px; }
+.project-actions { display: flex; gap: 6px; flex-direction: column; }
+
+/* ===== File Section ===== */
+.file-section {
+  grid-column: 1 / -1;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e5e7eb;
+}
+.file-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.file-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+.file-section-title .chevron-small {
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+.file-section-title.collapsed .chevron-small {
+  transform: rotate(-90deg);
+}
+.file-list { font-size: 12px; }
+.file-list.collapsed { display: none; }
+.file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+.file-row:last-child { margin-bottom: 0; }
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.file-name {
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.file-type {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #e0e7ff;
+  color: #3730a3;
+  white-space: nowrap;
+}
+.file-size { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.file-note { font-size: 11px; color: var(--muted); margin-left: 4px; }
+.file-actions { display: flex; gap: 4px; margin-left: 8px; }
+.file-btn {
+  padding: 2px 8px;
+  font-size: 11px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.file-btn-download { background: #dbeafe; color: #1e40af; }
+.file-btn-download:hover { background: #bfdbfe; }
+.file-btn-delete { background: #fee2e2; color: #991b1b; }
+.file-btn-delete:hover { background: #fecaca; }
+
+/* ===== Calendar ===== */
+.cal-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+}
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--rule);
+}
+.cal-nav h2 {
+ font-size: 18px;
+  font-weight: 700;
+  min-width: 160px;
+  text-align: center;
+}
+.cal-nav-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.cal-nav-btn:hover { background: #f1f5f9; }
+.cal-today-btn {
+ padding: 6px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  transition: all 0.15s;
+}
+.cal-today-btn:hover { background: #eff6ff; }
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: #f1f5f9;
+  border-top: 1px solid var(--rule);
+  border-left: 1px solid var(--rule);
+}
+.cal-weekday {
+  background: #f8fafc;
+  padding: 10px 4px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.cal-day {
+  background: white;
+  min-height: 90px;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  position: relative;
+}
+.cal-day:hover { background: #f8fafc; }
+.cal-day.other-month { background: #fafbfc; }
+.cal-day.other-month .cal-day-num { color: #d1d5db; }
+.cal-day-num {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.cal-day.today .cal-day-num {
+  background: var(--accent);
+  color: white;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cal-day.selected {
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.cal-day-items {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.cal-day-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 1px 0;
+}
+.cal-day-item.done-item {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+.cal-day-more {
+  font-size: 10px;
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Plan Panel */
+.plan-panel {
+ background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 160px);
+  position: sticky;
+  top: 20px;
+}
+.plan-panel-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+.plan-panel-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+}
+.plan-panel-date {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.plan-progress {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+.plan-progress-bar {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.plan-progress-fill {
+  height: 100%;
+  background: var(--success);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.plan-progress-text {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+}
+.plan-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 20px;
+}
+.plan-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.plan-item:last-child { border-bottom: none; }
+.plan-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  font-size: 12px;
+  color: transparent;
+}
+.plan-checkbox:hover { border-color: var(--accent); }
+.plan-checkbox.checked {
+  background: var(--success);
+  border-color: var(--success);
+  color: white;
+}
+.plan-item-text {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  transition: all 0.15s;
+}
+.plan-item-text.done {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+.plan-item-delete {
+  background: none;
+  border: none;
+  color: #d1d5db;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.plan-item-delete:hover { color: var(--accent2); }
+.plan-add-row {
+  padding: 12px 20px;
+  border-top: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+.plan-add-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.plan-add-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+.plan-empty-hint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 30px 0;
+}
+.plan-empty-hint .hint-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+  opacity: 0.4;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--ink);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  z-index: 200;
+  display: none;
+  animation: slideIn 0.3s ease;
+}
+.toast.show { display: block; }
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container { padding: 12px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .project-card { grid-template-columns: 1fr; }
+  .file-row { flex-wrap: wrap; }
+  .cal-layout { grid-template-columns: 1fr; }
+  .cal-day { min-height: 60px; }
+  .plan-panel { max-height: none; position: static; }
+}
+@media (max-width: 480px) {
+  .cal-day { min-height: 44px; padding: 4px; }
+  .cal-day-num { font-size: 11px; }
+  .cal-day-items { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>项目跟进表</h1>
+  <div class="meta">网页版 | 数据保存在浏览器本地 | 每天5分钟轻松跟进</div>
+</header>
+
+<div class="nav">
+  <button class="nav-btn active" onclick="showTab('overview')">项目总览</button>
+  <button class="nav-btn" onclick="showTab('calendar')">日历计划</button>
+  <button class="nav-btn" onclick="showTab('daily')">每日跟进</button>
+  <button class="nav-btn" onclick="showTab('todos')">待办事项</button>
+</div>
+
+<!-- Overview Tab -->
+<div id="tab-overview" class="tab-content">
+  <div class="stats-grid">
+    <div class="stat-card p0">
+      <div class="number" id="stat-p0">0</div>
+      <div class="label">P0 紧急待办</div>
+    </div>
+    <div class="stat-card p1">
+      <div class="number" id="stat-p1">0</div>
+      <div class="label">P1 紧急待办</div>
+    </div>
+    <div class="stat-card p2">
+      <div class="number" id="stat-p2">0</div>
+      <div class="label">P2 正常进行中</div>
+    </div>
+    <div class="stat-card done">
+      <div class="number" id="stat-done">0</div>
+      <div class="label">今日已完成</div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-header">
+      <h2>项目列表</h2>
+      <button class="btn btn-primary" onclick="openModal('projectModal')">+ 新建项目</button>
+    </div>
+    <div id="project-list"></div>
+  </div>
+</div>
+
+<!-- Calendar Tab -->
+<div id="tab-calendar" class="tab-content cal-layout" style="display:none">
+  <div class="section">
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="calPrev()">‹</button>
+      <h2 id="cal-month-title"></h2>
+      <button class="cal-nav-btn" onclick="calNext()">›</button>
+      <button class="cal-today-btn" onclick="calToday()">今天</button>
+    </div>
+    <div id="cal-grid" class="cal-grid"></div>
+  </div>
+  <div class="plan-panel" id="plan-panel">
+    <div class="plan-panel-header">
+      <div>
+        <h3 id="plan-title">选择日期</h3>
+        <div class="plan-panel-date" id="plan-weekday"></div>
+      </div>
+    </div>
+    <div class="plan-progress" id="plan-progress">
+      <div class="plan-progress-text">
+        <span id="plan-progress-label">完成进度</span>
+        <span id="plan-progress-num">0/0</span>
+      </div>
+      <div class="plan-progress-bar">
+        <div class="plan-progress-fill" id="plan-progress-fill" style="width:0"></div>
+      </div>
+    </div>
+    <div class="plan-list" id="plan-list"></div>
+    <div class="plan-add-row">
+      <input type="text" class="plan-add-input" id="plan-add-input" placeholder="输入计划，回车添加..." onkeydown="if(event.key==='Enter')addPlanItem()">
+    </div>
+  </div>
+</div>
+
+<!-- Daily Tab -->
+<div id="tab-daily" class="tab-content" style="display:none">
+  <div class="section">
+    <div class="section-header">
+      <h2>每日跟进记录</h2>
+      <button class="btn btn-success" onclick="openModal('followModal')">+ 新增记录</button>
+    </div>
+    <div class="filters">
+      <select id="filter-project" onchange="renderFollows()">
+        <option value="">所有项目</option>
+      </select>
+      <input type="date" id="filter-date" onchange="renderFollows()">
+      <button class="btn btn-sm" onclick="clearFollowFilters()">清除筛选</button>
+    </div>
+    <div id="follow-list"></div>
+  </div>
+</div>
+
+<!-- Todos Tab -->
+<div id="tab-todos" class="tab-content" style="display:none">
+  <div class="section">
+    <div class="section-header">
+      <h2>待办事项</h2>
+      <button class="btn btn-primary" onclick="openModal('todoModal')">+ 新增待办</button>
+    </div>
+    <div class="filters">
+      <select id="filter-todo-priority" onchange="renderTodos()">
+        <option value="">所有优先级</option>
+        <option value="P0">P0 最高</option>
+        <option value="P1">P1 高</option>
+        <option value="P2">P2 中</option>
+        <option value="P3">P3 低</option>
+      </select>
+      <select id="filter-todo-status" onchange="renderTodos()">
+        <option value="">所有状态</option>
+        <option value="未开始">未开始</option>
+        <option value="进行中">进行中</option>
+        <option value="已完成">已完成</option>
+      </select>
+      <button class="btn btn-sm" onclick="clearTodoFilters()">清除筛选</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>截止日期</th>
+            <th>剩余天数</th>
+            <th>项目</th>
+            <th>待办事项</th>
+            <th>需要什么</th>
+            <th>优先级</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="todo-list"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Project Modal -->
+<div class="modal-overlay" id="projectModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>新建项目</h3>
+      <button class="modal-close" onclick="closeModal('projectModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>所属公司 <span style="color:#dc2626">*</span></label>
+        <input type="text" id="proj-company" placeholder="如：中广欧特斯" list="company-suggestions">
+        <datalist id="company-suggestions"><option value="中广欧特斯"></datalist>
+      </div>
+      <div class="form-group">
+        <label>项目编号 <span style="color:#dc2626">*</span></label>
+        <input type="text" id="proj-id" placeholder="如：P001">
+      </div>
+      <div class="form-group">
+        <label>项目名称</label>
+        <input type="text" id="proj-client" placeholder="如：德国UBA认证">
+      </div>
+      <div class="form-group">
+        <label>认证类型</label>
+        <input type="text" id="proj-type" placeholder="如：德国饮用水自我申明">
+      </div>
+      <div class="form-group">
+        <label>当前阶段</label>
+        <input type="text" id="proj-stage" placeholder="如：等样品">
+      </div>
+      <div class="form-group">
+        <label>负责人</label>
+        <input type="text" id="proj-owner" placeholder="如：张三">
+      </div>
+      <div class="form-group">
+        <label>目标完成日期</label>
+        <input type="date" id="proj-target">
+      </div>
+      <div class="form-group">
+        <label>费用预算</label>
+        <input type="text" id="proj-budget" placeholder="如：42400/批">
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <textarea id="proj-note" placeholder="其他备注..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('projectModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveProject()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Follow Modal -->
+<div class="modal-overlay" id="followModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>新增跟进记录</h3>
+      <button class="modal-close" onclick="closeModal('followModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>日期</label>
+        <input type="date" id="follow-date">
+      </div>
+      <div class="form-group">
+        <label>选择项目</label>
+        <select id="follow-project"></select>
+      </div>
+      <div class="form-group">
+        <label>今天做了什么</label>
+        <textarea id="follow-done" placeholder="例如：催了粉厂发货，整理了爆炸图..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>遇到什么阻碍</label>
+        <textarea id="follow-block" placeholder="例如：粉厂没回复，供应商缺证书..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>需要什么资料/支持</label>
+        <textarea id="follow-need" placeholder="例如：需要粉厂样品、需要财务付款..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>下一步计划</label>
+        <textarea id="follow-next" placeholder="例如：明天继续催，下周联系供应商..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('followModal')">取消</button>
+      <button class="btn btn-success" onclick="saveFollow()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Todo Modal -->
+<div class="modal-overlay" id="todoModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>新增待办</h3>
+      <button class="modal-close" onclick="closeModal('todoModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>选择项目</label>
+        <select id="todo-project"></select>
+      </div>
+      <div class="form-group">
+        <label>待办事项</label>
+        <input type="text" id="todo-title" placeholder="如：提供搪瓷样品">
+      </div>
+      <div class="form-group">
+        <label>截止日期</label>
+        <input type="date" id="todo-deadline">
+      </div>
+      <div class="form-group">
+        <label>需要什么资料</label>
+        <textarea id="todo-need" placeholder="如：粉厂样品10片+100g粉"></textarea>
+      </div>
+      <div class="form-group">
+        <label>找谁要</label>
+        <input type="text" id="todo-who" placeholder="如：粉厂">
+      </div>
+      <div class="form-group">
+        <label>优先级</label>
+        <select id="todo-priority">
+          <option value="P0">P0 — 最高（立即处理）</option>
+          <option value="P1">P1 — 高（14天内）</option>
+          <option value="P2">P2 — 中（正常推进）</option>
+          <option value="P3">P3 — 低（时间充裕）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <textarea id="todo-note" placeholder="其他备注..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('todoModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveTodo()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- File Modal -->
+<div class="modal-overlay" id="fileModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>添加文件</h3>
+      <button class="modal-close" onclick="closeModal('fileModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>选择文件</label>
+        <input type="file" id="file-input" onchange="onFileSelected()">
+        <p style="font-size:12px;color:var(--muted);margin-top:4px">支持上传文档、图片等（较大文件建议只记录信息）</p>
+      </div>
+      <div class="form-group">
+        <label>文件名称 <span style="color:#dc2626">*</span></label>
+        <input type="text" id="file-name" placeholder="如：UBA申请表.pdf">
+      </div>
+      <div class="form-group">
+        <label>文件类型</label>
+        <select id="file-type">
+          <option value="证书">证书</option>
+          <option value="测试报告">测试报告</option>
+          <option value="申请表">申请表</option>
+          <option value="样品照片">样品照片</option>
+          <option value="合同">合同</option>
+          <option value="发票">发票</option>
+          <option value="BOM/爆炸图">BOM/爆炸图</option>
+          <option value="证明文件">证明文件</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>存放路径/位置</label>
+        <input type="text" id="file-path" placeholder="如：D:\项目资料\中广\ 或 网盘链接">
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <textarea id="file-note" placeholder="其他说明..."></textarea>
+      </div>
+      <input type="hidden" id="file-project-id">
+      <input type="hidden" id="file-size">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('fileModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveFile()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== IndexedDB for File Storage ==========
+const DB_NAME = 'project_files_db';
+const DB_VERSION = 1;
+let db = null;
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => { db = request.result; resolve(db); };
+    request.onupgradeneeded = (e) => {
+      const database = e.target.result;
+      if (!database.objectStoreNames.contains('files')) {
+        database.createObjectStore('files', { keyPath: 'id' });
+      }
+    };
+  });
+}
+function saveFileToDB(id, data) {
+  return new Promise((resolve, reject) => {
+    if (!db) { resolve(); return; }
+    const tx = db.transaction('files', 'readwrite');
+    tx.objectStore('files').put({ id, data });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function getFileFromDB(id) {
+  return new Promise((resolve, reject) => {
+    if (!db) { resolve(null); return; }
+    const tx = db.transaction('files', 'readonly');
+    const req = tx.objectStore('files').get(id);
+    req.onsuccess = () => resolve(req.result ? req.result.data : null);
+    req.onerror = () => reject(req.error);
+  });
+}
+function deleteFileFromDB(id) {
+  return new Promise((resolve, reject) => {
+    if (!db) { resolve(); return; }
+    const tx = db.transaction('files', 'readwrite');
+    tx.objectStore('files').delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ========== Data Management ==========
+const STORAGE_KEY = 'project_tracker_data_v2';
+function getData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) return JSON.parse(raw);
+  return getDefaultData();
+}
+function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+
+function getDefaultData() {
+  return {
+    projects: [
+      { id: 'P001', company: '中广欧特斯', client: '德国UBA', type: '德国饮用水自我申明', stage: '等样品', owner: '张三', target: '2026-11-16', budget: '42400/批', note: '需确认批次数', files: [] },
+      { id: 'P002', company: '中广欧特斯', client: '意大利DM174', type: '意大利饮用水测试', stage: '资料整理', owner: '张三', target: '2026-10-20', budget: '8480/材料', note: '8.15前送样', files: [] },
+      { id: 'P003', company: '中广欧特斯', client: '法国ACS', type: '法国ACS认证', stage: '等证明文件', owner: '李四', target: '2026-11-05', budget: '30000', note: '8.5递交申请', files: [] },
+      { id: 'P004', company: '中广欧特斯', client: '波兰PZH', type: '波兰PZH认证', stage: '资料整理', owner: '李四', target: '2026-10-05', budget: '40000', note: '可用德/意报告转', files: [] },
+      { id: 'P005', company: '中广欧特斯', client: '罗匈注册', type: '罗马尼亚/匈牙利卫生注册', stage: '等账号', owner: '王五', target: '2026-11-05', budget: '15000', note: '需中广营业执照', files: [] },
+      { id: 'P006', company: '中广欧特斯', client: '葡西申明', type: '葡萄牙/西班牙自我申明', stage: '待启动', owner: '王五', target: '2026-11-20', budget: '0', note: '依赖德国项目', files: [] },
+    ],
+    follows: [
+      { id: 1, date: '2026-07-10', projectId: 'P001', done: '迪恩提供模板', block: '无', need: '无', next: '理解模板要求，开始整理资料' },
+      { id: 2, date: '2026-07-15', projectId: 'P001', done: '联系粉厂确认样品', block: '粉厂回复7.15批次不确定', need: '需要粉厂确认具体发货时间', next: '催促粉厂，备选其他批次' },
+      { id: 3, date: '2026-07-20', projectId: 'P001', done: '再次催促粉厂', block: '粉厂未按时发货', need: '需要粉厂立即发货或换批次', next: '明天继续催，必要时找领导协调' },
+      { id: 4, date: '2026-07-21', projectId: 'P002', done: '开始整理爆炸图', block: '电加热爆炸图缺少子零件信息', need: '需要电加热供应商提供爆炸图', next: '联系电加热供应商' },
+      { id: 5, date: '2026-07-22', projectId: 'P003', done: '发邮件给有机材料供应商要ACS证书', block: '供应商未回复', need: '需要供应商尽快提供ACS证书', next: '明天电话催供应商' },
+      { id: 6, date: '2026-07-23', projectId: 'P001', done: '继续催粉厂，领导介入协调', block: '粉厂承诺7.25发货', need: '等7.25样品到货确认', next: '准备寄样，走申请流程' },
+    ],
+    todos: [
+      { id: 1, projectId: 'P001', title: '提供搪瓷样品（10片+100g粉）', deadline: '2026-07-25', need: '粉厂样品', who: '粉厂', priority: 'P0', status: '进行中', note: '已逾期4天，7.25承诺发货' },
+      { id: 2, projectId: 'P001', title: '支付机构费用（42,400/批）', deadline: '2026-07-25', need: '付款申请单', who: '财务', priority: 'P0', status: '未开始', note: '需确认批次数后付款' },
+      { id: 3, projectId: 'P002', title: '完成资料整理（型号清单+爆炸图+BOM）', deadline: '2026-07-25', need: '电加热爆炸图', who: '电加热供应商', priority: 'P0', status: '进行中', note: '缺电加热子零件爆炸图' },
+      { id: 4, projectId: 'P003', title: '完成资料整理', deadline: '2026-07-25', need: '有机材料ACS证书', who: '有机材料供应商', priority: 'P0', status: '进行中', note: '供应商未回复邮件' },
+      { id: 5, projectId: 'P004', title: '完成资料整理', deadline: '2026-07-25', need: '水道图', who: '工程部', priority: 'P0', status: '未开始', note: '需要工程部提供从进水到出水图' },
+      { id: 6, projectId: 'P005', title: '完成资料整理', deadline: '2026-07-25', need: '当地子公司营业执照', who: '中广法务', priority: 'P0', status: '进行中', note: '法务在准备' },
+      { id: 7, projectId: 'P003', title: '拿到所有证明文件', deadline: '2026-08-01', need: '金属3.1质保书+有机ACS证书+搪瓷成分文件', who: '各供应商', priority: 'P1', status: '进行中', note: '金属质保书已拿到，等有机证书' },
+      { id: 8, projectId: 'P004', title: '拿到所有证明文件', deadline: '2026-08-01', need: '金属3.1/意测试报告+有机ACS/意测试报告+德搪瓷报告', who: '各供应商/实验室', priority: 'P1', status: '未开始', note: '依赖德国和意大利报告' },
+      { id: 9, projectId: 'P001', title: '搪瓷样品到机构+核对资料', deadline: '2026-08-05', need: '样品物流单号', who: '物流公司', priority: 'P1', status: '未开始', note: '等样品发货' },
+      { id: 10, projectId: 'P003', title: '递交ACS申请', deadline: '2026-08-05', need: '完整资料包', who: '迪恩', priority: 'P1', status: '未开始', note: '迪恩协助递交' },
+      { id: 11, projectId: 'P002', title: '样品到实验室', deadline: '2026-08-15', need: '实际零件（面积≥1dm²×≥3个）', who: '中广仓库', priority: 'P1', status: '未开始', note: '需提前准备零件' },
+      { id: 12, projectId: 'P004', title: '回复机构问题', deadline: '2026-09-01', need: '机构反馈意见', who: '迪恩', priority: 'P2', status: '未开始', note: '等机构审核后反馈' },
+      { id: 13, projectId: 'P004', title: '获得PZH证书', deadline: '2026-10-05', need: '证书', who: '波兰机构', priority: 'P2', status: '未开始', note: '普通流程约1-3个月' },
+      { id: 14, projectId: 'P002', title: '测试完成', deadline: '2026-10-15', need: '测试报告', who: '意大利实验室', priority: 'P2', status: '未开始', note: '约2个月测试周期' },
+      { id: 15, projectId: 'P002', title: '完成自我申明', deadline: '2026-10-20', need: '自我申明文件', who: '迪恩协助', priority: 'P2', status: '未开始', note: '测试完成后编写' },
+      { id: 16, projectId: 'P001', title: '搪瓷测试完成', deadline: '2026-11-05', need: '测试报告', who: '德国实验室', priority: 'P2', status: '未开始', note: '约3个月测试周期' },
+      { id: 17, projectId: 'P003', title: '获得ACS证书', deadline: '2026-11-05', need: 'ACS证书', who: '法国机构', priority: 'P2', status: '未开始', note: '递交后约3个月' },
+      { id: 18, projectId: 'P005', title: '获得卫生注册', deadline: '2026-11-05', need: '注册证书', who: '罗/匈机构', priority: 'P2', status: '未开始', note: '约1-3个月' },
+      { id: 19, projectId: 'P001', title: '完成自我申明', deadline: '2026-11-16', need: '自我申明文件', who: '迪恩协助', priority: 'P2', status: '未开始', note: '测试完成后编写' },
+      { id: 20, projectId: 'P006', title: '完成葡/西自我申明', deadline: '2026-11-20', need: '德国全套资料', who: '德国项目完成后', priority: 'P3', status: '未开始', note: '依赖德国项目' },
+    ],
+    plans: []
+  };
+}
+
+let data = getData();
+if (!data.plans) data.plans = [];
+
+initDB().catch(e => console.log('DB init skipped:', e));
+
+// ========== Tab Navigation ==========
+function showTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).style.display = tab === 'calendar' ? 'grid' : 'block';
+  event.target.classList.add('active');
+  if (tab === 'overview') renderOverview();
+  if (tab === 'calendar') { renderCalendar(); selectToday(); }
+  if (tab === 'daily') renderFollows();
+  if (tab === 'todos') renderTodos();
+}
+
+// ========== Calendar ==========
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+let calYear, calMonth, selectedDate;
+
+function initCalState() {
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+}
+initCalState();
+
+function calPrev() {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+function calNext() {
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar();
+}
+function calToday() {
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+  renderCalendar();
+  selectToday();
+}
+function selectToday() {
+  const now = new Date();
+  selectDate(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function formatDateStr(y, m, d) {
+  return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+
+function getPlanForDate(dateStr) {
+  return data.plans.find(p => p.date === dateStr);
+}
+
+function renderCalendar() {
+  const title = document.getElementById('cal-month-title');
+  title.textContent = calYear + '年' + (calMonth + 1) + '月';
+
+  const grid = document.getElementById('cal-grid');
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const prevMonthDays = new Date(calYear, calMonth, 0).getDate();
+  const today = new Date();
+  const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
+  const selectedStr = selectedDate || '';
+
+  let html = WEEKDAYS.map(w => `<div class="cal-weekday">${w}</div>`).join('');
+
+  // Previous month padding
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const d = prevMonthDays - i;
+    html += `<div class="cal-day other-month"><div class="cal-day-num">${d}</div></div>`;
+  }
+
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = formatDateStr(calYear, calMonth, d);
+    const isToday = dateStr === todayStr;
+    const isSelected = dateStr === selectedStr;
+    const plan = getPlanForDate(dateStr);
+    let itemsHtml = '';
+    if (plan && plan.items && plan.items.length > 0) {
+      const show = plan.items.slice(0, 3);
+      itemsHtml = '<div class="cal-day-items">';
+      show.forEach(item => {
+        itemsHtml += `<div class="cal-day-item ${item.done ? 'done-item' : ''}">${escHtml(item.text)}</div>`;
+      });
+      if (plan.items.length > 3) {
+        itemsHtml += `<div class="cal-day-more">+${plan.items.length - 3}项</div>`;
+      }
+      itemsHtml += '</div>';
+    }
+    html += `<div class="cal-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" onclick="selectDate(${calYear},${calMonth},${d})">
+      <div class="cal-day-num">${d}</div>
+      ${itemsHtml}
+    </div>`;
+  }
+
+  // Next month padding
+  const totalCells = firstDay + daysInMonth;
+  const remaining = (7 - totalCells % 7) % 7;
+  for (let d = 1; d <= remaining; d++) {
+    html += `<div class="cal-day other-month"><div class="cal-day-num">${d}</div></div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+function selectDate(y, m, d) {
+  selectedDate = formatDateStr(y, m, d);
+  renderCalendar();
+  renderPlanPanel();
+}
+
+function renderPlanPanel() {
+  if (!selectedDate) {
+    document.getElementById('plan-title').textContent = '选择日期';
+    document.getElementById('plan-weekday').textContent = '';
+    document.getElementById('plan-list').innerHTML = '<div class="plan-empty-hint"><div class="hint-icon">📅</div>点击左侧日历选择日期</div>';
+    document.getElementById('plan-progress').style.display = 'none';
+    return;
+  }
+
+  const date = new Date(selectedDate + 'T00:00:00');
+  const weekdayNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  const today = new Date();
+  const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
+  const diff = Math.round((date - new Date(todayStr + 'T00:00:00')) / (1000 * 60 * 60 * 24));
+  let dayLabel = weekdayNames[date.getDay()];
+  if (diff === 0) dayLabel += ' (今天)';
+  else if (diff === 1) dayLabel += ' (明天)';
+  else if (diff === -1) dayLabel += ' (昨天)';
+
+  document.getElementById('plan-title').textContent = (date.getMonth() + 1) + '月' + date.getDate() + '日';
+  document.getElementById('plan-weekday').textContent = dayLabel;
+
+  let plan = getPlanForDate(selectedDate);
+  if (!plan) {
+    plan = { date: selectedDate, items: [] };
+    data.plans.push(plan);
+    saveData(data);
+  }
+
+  const items = plan.items || [];
+  const total = items.length;
+  const done = items.filter(i => i.done).length;
+
+  document.getElementById('plan-progress').style.display = total > 0 ? 'block' : 'none';
+  document.getElementById('plan-progress-num').textContent = done + '/' + total;
+  const pct = total > 0 ? Math.round(done / total * 100) : 0;
+  document.getElementById('plan-progress-fill').style.width = pct + '%';
+  document.getElementById('plan-progress-label').textContent = total > 0 ? (pct === 100 ? '全部完成！' : '完成进度') : '完成进度';
+
+  const list = document.getElementById('plan-list');
+  if (items.length === 0) {
+    list.innerHTML = '<div class="plan-empty-hint"><div class="hint-icon">✏️</div>还没有计划<br>在下方输入框添加今天的计划</div>';
+  } else {
+    list.innerHTML = items.map((item, idx) => `
+      <div class="plan-item">
+        <div class="plan-checkbox ${item.done ? 'checked' : ''}" onclick="togglePlanItem(${idx})">${item.done ? '✓' : ''}</div>
+        <div class="plan-item-text ${item.done ? 'done' : ''}">${escHtml(item.text)}</div>
+        <button class="plan-item-delete" onclick="deletePlanItem(${idx})">×</button>
+      </div>
+    `).join('');
+  }
+}
+
+function addPlanItem() {
+  if (!selectedDate) return;
+  const input = document.getElementById('plan-add-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  let plan = getPlanForDate(selectedDate);
+  if (!plan) {
+    plan = { date: selectedDate, items: [] };
+    data.plans.push(plan);
+  }
+  plan.items.push({ text: text, done: false });
+  saveData(data);
+  input.value = '';
+  renderPlanPanel();
+  renderCalendar();
+}
+
+function togglePlanItem(idx) {
+  const plan = getPlanForDate(selectedDate);
+  if (!plan || !plan.items[idx]) return;
+  plan.items[idx].done = !plan.items[idx].done;
+  saveData(data);
+  renderPlanPanel();
+  renderCalendar();
+}
+
+function deletePlanItem(idx) {
+  const plan = getPlanForDate(selectedDate);
+  if (!plan) return;
+  plan.items.splice(idx, 1);
+  saveData(data);
+  renderPlanPanel();
+  renderCalendar();
+}
+
+function escHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+// ========== Modal ==========
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+  if (id === 'followModal') {
+    document.getElementById('follow-date').value = new Date().toISOString().split('T')[0];
+    populateProjectSelect('follow-project');
+  }
+  if (id === 'todoModal') populateProjectSelect('todo-project');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ========== Populate Selects ==========
+function populateProjectSelect(selectId) {
+  const sel = document.getElementById(selectId);
+  sel.innerHTML = data.projects.map(p => `<option value="${p.id}">${p.id} — ${p.company}-${p.client}</option>`).join('');
+}
+function populateProjectFilter() {
+  const sel = document.getElementById('filter-project');
+  sel.innerHTML = '<option value="">所有项目</option>' + data.projects.map(p => `<option value="${p.id}">${p.company}-${p.client}</option>`).join('');
+}
+
+// ========== Render Overview ==========
+function renderOverview() {
+  const p0 = data.todos.filter(t => t.priority === 'P0' && t.status !== '已完成').length;
+  const p1 = data.todos.filter(t => t.priority === 'P1' && t.status !== '已完成').length;
+  const p2 = data.todos.filter(t => t.priority === 'P2' && t.status !== '已完成').length;
+  const done = data.todos.filter(t => t.status === '已完成').length;
+  document.getElementById('stat-p0').textContent = p0;
+  document.getElementById('stat-p1').textContent = p1;
+  document.getElementById('stat-p2').textContent = p2;
+  document.getElementById('stat-done').textContent = done;
+
+  const list = document.getElementById('project-list');
+  if (data.projects.length === 0) {
+    list.innerHTML = '<div class="empty">暂无项目，点击右上角「新建项目」添加</div>';
+    return;
+  }
+  data.projects.forEach(p => { if (!p.files) p.files = []; });
+
+  const groups = {};
+  data.projects.forEach(p => {
+    const key = p.company || '未分组';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(p);
+  });
+  const companyNames = Object.keys(groups).sort();
+
+  list.innerHTML = companyNames.map(company => {
+    const projects = groups[company];
+    const totalPending = projects.reduce((s, p) => s + data.todos.filter(t => t.projectId === p.id && t.status !== '已完成').length, 0);
+    const totalUrgent = projects.reduce((s, p) => s + data.todos.filter(t => t.projectId === p.id && t.priority === 'P0' && t.status !== '已完成').length, 0);
+    return `<div class="company-group">
+      <div class="company-header" onclick="toggleCompany(this)">
+        <h3><span class="chevron">▼</span>${company}</h3>
+        <div class="company-count">${projects.length}个项目${totalUrgent > 0 ? `<span class="tag tag-p0" style="margin-left:8px">${totalUrgent}个P0</span>` : ''}${totalPending > 0 ? `<span class="tag tag-p1" style="margin-left:4px">${totalPending}个待办</span>` : ''}</div>
+      </div>
+      <div class="company-projects">${projects.map(p => renderProjectCard(p)).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderProjectCard(p) {
+  const projTodos = data.todos.filter(t => t.projectId === p.id && t.status !== '已完成');
+  const urgent = projTodos.filter(t => t.priority === 'P0').length;
+  const pending = projTodos.length;
+  const files = p.files || [];
+  return `<div class="project-card"><div>
+    <div class="project-title">${p.id} — ${p.company}-${p.client}</div>
+    <div class="project-meta">${p.type} | 负责人：${p.owner} | 目标：${p.target || '未设定'}</div>
+    <div class="project-desc">
+      <span class="tag tag-进行中">${p.stage}</span>
+      ${urgent > 0 ? `<span class="tag tag-p0">${urgent}个P0待办</span>` : ''}
+      ${pending > 0 ? `<span class="tag tag-p1">${pending}个待办</span>` : '<span class="tag tag-done">全部完成</span>'}
+      ${files.length > 0 ? `<span class="tag tag-file">${files.length}个文件</span>` : ''}
+      ${p.budget ? `<span style="color:#6b7280;font-size:12px;margin-left:8px;">预算：${p.budget}</span>` : ''}
+    </div>
+    ${p.note ? `<div class="project-meta" style="margin-top:6px;">备注：${p.note}</div>` : ''}
+    <div class="file-section">
+      <div class="file-section-header">
+        <div class="file-section-title" onclick="toggleFileSection(event, this)"><span class="chevron-small">▼</span> 文件资料 (${files.length})</div>
+        <button class="btn btn-sm btn-ghost" onclick="openFileModal('${p.id}')">+ 添加文件</button>
+      </div>
+      <div class="file-list ${files.length === 0 ? 'collapsed' : ''}">
+        ${files.length === 0 ? '<div style="color:var(--muted);font-size:12px;padding:4px 0;">暂无文件</div>' : files.map(f => `
+          <div class="file-row"><div class="file-info">
+            <span class="file-name" title="${f.name}">${f.name}</span>
+            <span class="file-type">${f.fileType || '其他'}</span>
+            ${f.size ? `<span class="file-size">${formatFileSize(f.size)}</span>` : ''}
+            ${f.path ? `<span class="file-note" title="${f.path}">📁 ${f.path}</span>` : ''}
+            ${f.note ? `<span class="file-note">📝 ${f.note}</span>` : ''}
+          </div><div class="file-actions">
+            ${f.hasData ? `<button class="file-btn file-btn-download" onclick="downloadFile('${p.id}','${f.id}')">下载</button>` : ''}
+            <button class="file-btn file-btn-delete" onclick="deleteFile('${p.id}','${f.id}')">删除</button>
+          </div></div>
+        `).join('')}
+      </div>
+    </div>
+  </div><div class="project-actions">
+    <button class="btn btn-sm btn-primary" onclick="quickFollow('${p.id}')">+ 跟进</button>
+    <button class="btn btn-sm" onclick="quickTodo('${p.id}')">+ 待办</button>
+  </div></div>`;
+}
+
+function toggleCompany(header) {
+  header.classList.toggle('collapsed');
+  header.nextElementSibling.classList.toggle('collapsed');
+}
+function toggleFileSection(e, title) {
+  e.stopPropagation();
+  title.classList.toggle('collapsed');
+  title.parentElement.nextElementSibling.classList.toggle('collapsed');
+}
+function formatFileSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// ========== File Functions ==========
+let selectedFileData = null;
+function openFileModal(projectId) {
+  document.getElementById('file-project-id').value = projectId;
+  document.getElementById('file-input').value = '';
+  document.getElementById('file-name').value = '';
+  document.getElementById('file-type').value = '证书';
+  document.getElementById('file-path').value = '';
+  document.getElementById('file-note').value = '';
+  document.getElementById('file-size').value = '';
+  selectedFileData = null;
+  openModal('fileModal');
+}
+function onFileSelected() {
+  const file = document.getElementById('file-input').files[0];
+  if (!file) return;
+  document.getElementById('file-name').value = file.name;
+  document.getElementById('file-size').value = file.size;
+  const reader = new FileReader();
+  reader.onload = (e) => { selectedFileData = e.target.result; };
+  reader.readAsDataURL(file);
+}
+async function saveFile() {
+  const projectId = document.getElementById('file-project-id').value;
+  const name = document.getElementById('file-name').value.trim();
+  if (!name) { showToast('请填写文件名称'); return; }
+  const fileId = 'file_' + Date.now();
+  const fileMeta = {
+    id: fileId, name, fileType: document.getElementById('file-type').value,
+    path: document.getElementById('file-path').value.trim(),
+    note: document.getElementById('file-note').value.trim(),
+    size: parseInt(document.getElementById('file-size').value) || 0,
+    hasData: !!selectedFileData, uploadTime: new Date().toISOString(),
+  };
+  const proj = data.projects.find(p => p.id === projectId);
+  if (!proj) return;
+  if (!proj.files) proj.files = [];
+  proj.files.push(fileMeta);
+  if (selectedFileData) { try { await saveFileToDB(fileId, selectedFileData); } catch(e) { showToast('文件存储失败，但已保存记录'); } }
+  saveData(data); closeModal('fileModal'); renderOverview(); showToast('文件已添加');
+}
+async function downloadFile(projectId, fileId) {
+  try {
+    const fileData = await getFileFromDB(fileId);
+    if (!fileData) { showToast('文件数据不存在'); return; }
+    const proj = data.projects.find(p => p.id === projectId);
+    const fileMeta = proj.files.find(f => f.id === fileId);
+    const link = document.createElement('a');
+    link.href = fileData; link.download = fileMeta ? fileMeta.name : 'download';
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  } catch(e) { showToast('下载失败'); }
+}
+async function deleteFile(projectId, fileId) {
+  if (!confirm('确定删除这个文件？')) return;
+  const proj = data.projects.find(p => p.id === projectId);
+  if (!proj || !proj.files) return;
+  proj.files = proj.files.filter(f => f.id !== fileId);
+  try { await deleteFileFromDB(fileId); } catch(e) {}
+  saveData(data); renderOverview(); showToast('文件已删除');
+}
+
+// ========== Render Follows ==========
+function renderFollows() {
+  populateProjectFilter();
+  const filterProj = document.getElementById('filter-project').value;
+  const filterDate = document.getElementById('filter-date').value;
+  let items = [...data.follows].sort((a, b) => new Date(b.date) - new Date(a.date));
+  if (filterProj) items = items.filter(f => f.projectId === filterProj);
+  if (filterDate) items = items.filter(f => f.date === filterDate);
+  const list = document.getElementById('follow-list');
+  if (items.length === 0) { list.innerHTML = '<div class="empty">暂无记录</div>'; return; }
+  list.innerHTML = items.map(f => {
+    const proj = data.projects.find(p => p.id === f.projectId);
+    return `<div class="timeline-item">
+      <div class="timeline-date">${f.date} — ${proj ? proj.company + '-' + proj.client : f.projectId}</div>
+      <div class="timeline-content">
+        <strong>做了什么：</strong>${f.done || '—'}<br>
+        ${f.block ? `<strong>阻碍：</strong><span style="color:#dc2626">${f.block}</span><br>` : ''}
+        ${f.need ? `<strong>需要什么：</strong>${f.need}<br>` : ''}
+        ${f.next ? `<strong>下一步：</strong>${f.next}` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+function clearFollowFilters() {
+  document.getElementById('filter-project').value = '';
+  document.getElementById('filter-date').value = '';
+  renderFollows();
+}
+
+// ========== Render Todos ==========
+function renderTodos() {
+  const filterPriority = document.getElementById('filter-todo-priority').value;
+  const filterStatus = document.getElementById('filter-todo-status').value;
+  let items = [...data.todos].sort((a, b) => {
+    const o = { 'P0': 0, 'P1': 1, 'P2': 2, 'P3': 3 };
+    if (o[a.priority] !== o[b.priority]) return o[a.priority] - o[b.priority];
+    return new Date(a.deadline) - new Date(b.deadline);
+  });
+  if (filterPriority) items = items.filter(t => t.priority === filterPriority);
+  if (filterStatus) items = items.filter(t => t.status === filterStatus);
+  const tbody = document.getElementById('todo-list');
+  if (items.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="empty">暂无待办</td></tr>'; return; }
+  const today = new Date();
+  tbody.innerHTML = items.map(t => {
+    const proj = data.projects.find(p => p.id === t.projectId);
+    const dl = t.deadline ? Math.ceil((new Date(t.deadline) - today) / (1000*60*60*24)) : '';
+    const dc = dl < 0 ? 'color:#dc2626;font-weight:700;' : dl <= 3 ? 'color:#f59e0b;font-weight:700;' : '';
+    return `<tr>
+      <td>${t.deadline || '—'}</td>
+      <td style="${dc}">${dl !== '' ? dl + '天' : '—'}</td>
+      <td>${proj ? proj.company + '-' + proj.client : t.projectId}</td>
+      <td>${t.title}</td>
+      <td>${t.need || '—'}</td>
+      <td><span class="tag tag-${t.priority.toLowerCase()}">${t.priority}</span></td>
+      <td><select onchange="updateTodoStatus(${t.id}, this.value)" style="font-size:12px;padding:4px;border-radius:4px;border:1px solid #e5e7eb;">
+        <option value="未开始" ${t.status==='未开始'?'selected':''}>未开始</option>
+        <option value="进行中" ${t.status==='进行中'?'selected':''}>进行中</option>
+        <option value="已完成" ${t.status==='已完成'?'selected':''}>已完成</option>
+        <option value="已取消" ${t.status==='已取消'?'selected':''}>已取消</option>
+      </select></td>
+      <td><button class="btn btn-sm btn-danger" onclick="deleteTodo(${t.id})">删除</button></td>
+    </tr>`;
+  }).join('');
+}
+function clearTodoFilters() {
+  document.getElementById('filter-todo-priority').value = '';
+  document.getElementById('filter-todo-status').value = '';
+  renderTodos();
+}
+
+// ========== Save Functions ==========
+function saveProject() {
+  const company = document.getElementById('proj-company').value.trim();
+  const id = document.getElementById('proj-id').value.trim();
+  if (!company) { showToast('请填写所属公司'); return; }
+  if (!id) { showToast('请填写项目编号'); return; }
+  if (data.projects.find(p => p.id === id)) { showToast('项目编号已存在'); return; }
+  data.projects.push({
+    id, company, client: document.getElementById('proj-client').value.trim(),
+    type: document.getElementById('proj-type').value.trim(),
+    stage: document.getElementById('proj-stage').value.trim(),
+    owner: document.getElementById('proj-owner').value.trim(),
+    target: document.getElementById('proj-target').value,
+    budget: document.getElementById('proj-budget').value.trim(),
+    note: document.getElementById('proj-note').value.trim(), files: [],
+  });
+  saveData(data); closeModal('projectModal'); renderOverview(); showToast('项目已创建');
+  ['proj-company','proj-id','proj-client','proj-type','proj-stage','proj-owner','proj-target','proj-budget','proj-note'].forEach(id => document.getElementById(id).value = '');
+}
+function saveFollow() {
+  const projectId = document.getElementById('follow-project').value;
+  const date = document.getElementById('follow-date').value;
+  const done = document.getElementById('follow-done').value.trim();
+  if (!date || !done) { showToast('请填写日期和做了什么'); return; }
+  data.follows.push({
+    id: Date.now(), date, projectId, done,
+    block: document.getElementById('follow-block').value.trim(),
+    need: document.getElementById('follow-need').value.trim(),
+    next: document.getElementById('follow-next').value.trim(),
+  });
+  saveData(data); closeModal('followModal'); renderFollows(); showToast('跟进记录已保存');
+  document.getElementById('follow-done').value = '';
+  document.getElementById('follow-block').value = '';
+  document.getElementById('follow-need').value = '';
+  document.getElementById('follow-next').value = '';
+}
+function saveTodo() {
+  const projectId = document.getElementById('todo-project').value;
+  const title = document.getElementById('todo-title').value.trim();
+  const deadline = document.getElementById('todo-deadline').value;
+  if (!title) { showToast('请填写待办事项'); return; }
+  data.todos.push({
+    id: Date.now(), projectId, title, deadline,
+    need: document.getElementById('todo-need').value.trim(),
+    who: document.getElementById('todo-who').value.trim(),
+    priority: document.getElementById('todo-priority').value,
+    status: '未开始',
+    note: document.getElementById('todo-note').value.trim(),
+  });
+  saveData(data); closeModal('todoModal'); renderTodos(); renderOverview(); showToast('待办已添加');
+  document.getElementById('todo-title').value = '';
+  document.getElementById('todo-deadline').value = '';
+  document.getElementById('todo-need').value = '';
+  document.getElementById('todo-who').value = '';
+  document.getElementById('todo-note').value = '';
+}
+function updateTodoStatus(id, status) {
+  const todo = data.todos.find(t => t.id === id);
+  if (todo) { todo.status = status; saveData(data); renderTodos(); renderOverview(); if (status === '已完成') showToast('已完成！'); }
+}
+function deleteTodo(id) {
+  if (!confirm('确定删除这条待办？')) return;
+  data.todos = data.todos.filter(t => t.id !== id);
+  saveData(data); renderTodos(); renderOverview(); showToast('已删除');
+}
+
+// ========== Quick Actions ==========
+function quickFollow(projectId) {
+  openModal('followModal');
+  document.getElementById('follow-project').value = projectId;
+  document.getElementById('follow-date').value = new Date().toISOString().split('T')[0];
+}
+function quickTodo(projectId) {
+  openModal('todoModal');
+  document.getElementById('todo-project').value = projectId;
+}
+
+// ========== Toast ==========
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ========== Init ==========
+renderOverview();
+</script>
+</body>
+</html>
