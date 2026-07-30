@@ -1,0 +1,16 @@
+# 上传的文件
+.uploads/
+
+# 打包文件
+.trae-html-share-packages/
+
+# 临时文件
+*.txt
+*.dxf
+*.xlsx
+
+# 其他HTML报告（只保留index.html）
+zg-otes-meeting-summary/
+中广欧盟饮用水认证_进度看板.html
+项目跟进表_网页版.html
+项目跟进表_模板.xlsx
