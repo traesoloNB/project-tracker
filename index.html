@@ -48,31 +48,81 @@ body {
 }
 .sidebar.collapsed { width: 60px; }
 .sidebar.collapsed .nav-text { display: none; }
-.sidebar.collapsed .sidebar-brand { padding: 16px 0; justify-content: center; }
-.sidebar.collapsed .sidebar-brand span { display: none; }
-.sidebar.collapsed .sidebar-brand::after { content: '工'; font-size: 20px; font-weight: 700; }
+.sidebar.collapsed .ws-current-name { display: none; }
+.sidebar.collapsed .ws-chevron { display: none; }
+.sidebar.collapsed .ws-current { justify-content: center; padding: 16px 0; }
+.sidebar.collapsed .ws-dropdown { left: 60px; right: auto; width: 220px; }
 .sidebar.collapsed .nav-item { justify-content: center; padding: 14px 0; }
 .sidebar.collapsed .nav-icon { margin: 0; }
 .sidebar.collapsed .sidebar-toggle { justify-content: center; padding: 12px 0; }
 .sidebar.collapsed .sidebar-toggle span { display: none; }
 
-.sidebar-brand {
-  padding: 20px;
-  font-size: 16px;
-  font-weight: 700;
+/* Workspace Switcher */
+.ws-switcher {
+  position: relative;
   border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.ws-current {
+  padding: 16px 20px;
   display: flex;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
   white-space: nowrap;
+  transition: background 0.15s;
 }
-.sidebar-brand .brand-icon {
+.ws-current:hover { background: rgba(255,255,255,0.05); }
+.ws-current-icon {
   width: 32px; height: 32px;
   background: linear-gradient(135deg, #3b82f6, #8b5cf6);
   border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; flex-shrink: 0;
 }
+.ws-current-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: white;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-chevron {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.ws-chevron.open { transform: rotate(180deg); }
+.ws-dropdown {
+  display: none;
+  position: absolute;
+  left: 8px; right: 8px;
+  top: calc(100% + 4px);
+  background: #1f2937;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  padding: 4px;
+  z-index: 60;
+}
+.ws-dropdown.show { display: block; }
+.ws-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.ws-option:hover { background: rgba(255,255,255,0.08); color: white; }
+.ws-option.active { background: rgba(37,99,235,0.2); color: white; }
+.ws-option-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+.ws-option-text { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.ws-option-check { font-size: 14px; color: var(--sidebar-active); flex-shrink: 0; }
 
 .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
 .nav-item {
@@ -935,8 +985,10 @@ tr:hover td { background: #f8fafc; }
 @media (max-width: 768px) {
   .sidebar { width: 60px; }
   .sidebar .nav-text { display: none; }
-  .sidebar .sidebar-brand span { display: none; }
-  .sidebar .sidebar-brand::after { content: '工'; font-size: 20px; font-weight: 700; }
+  .sidebar .ws-current-name { display: none; }
+  .sidebar .ws-chevron { display: none; }
+  .sidebar .ws-current { justify-content: center; padding: 16px 0; }
+  .sidebar .ws-dropdown { left: 60px; right: auto; width: 220px; }
   .sidebar .nav-item { justify-content: center; padding: 14px 0; }
   .sidebar .nav-icon { margin: 0; }
   .sidebar .sidebar-toggle { justify-content: center; padding: 12px 0; }
@@ -962,9 +1014,29 @@ tr:hover td { background: #f8fafc; }
 
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-brand">
-    <div class="brand-icon">📊</div>
-    <span>工作台</span>
+  <div class="ws-switcher" id="ws-switcher">
+    <div class="ws-current" onclick="toggleWsDropdown(event)">
+      <div class="ws-current-icon" id="ws-current-icon">📋</div>
+      <span class="ws-current-name" id="ws-current-name">迪恩认证工作台</span>
+      <span class="ws-chevron" id="ws-chevron">▾</span>
+    </div>
+    <div class="ws-dropdown" id="ws-dropdown">
+      <div class="ws-option" data-ws="deen" onclick="switchWorkspace('deen')">
+        <span class="ws-option-icon">📋</span>
+        <span class="ws-option-text">迪恩认证工作台</span>
+        <span class="ws-option-check">✓</span>
+      </div>
+      <div class="ws-option" data-ws="ecommerce" onclick="switchWorkspace('ecommerce')">
+        <span class="ws-option-icon">🛒</span>
+        <span class="ws-option-text">电商工作台</span>
+        <span class="ws-option-check">✓</span>
+      </div>
+      <div class="ws-option" data-ws="cs" onclick="switchWorkspace('cs')">
+        <span class="ws-option-icon">💎</span>
+        <span class="ws-option-text">CS饰品工作台</span>
+        <span class="ws-option-check">✓</span>
+      </div>
+    </div>
   </div>
   <nav class="sidebar-nav">
     <div class="nav-item active" onclick="showPage('dashboard')">
@@ -1000,7 +1072,10 @@ tr:hover td { background: #f8fafc; }
 <main class="main-content" id="main-content">
 
   <header class="top-header">
-    <h1 id="page-title">仪表盘</h1>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span id="ws-header-label" style="font-size:12px;color:var(--muted);background:#eff6ff;padding:3px 10px;border-radius:6px;font-weight:600;">迪恩认证工作台</span>
+      <h1 id="page-title">仪表盘</h1>
+    </div>
     <div class="header-meta" id="header-date"></div>
   </header>
 
@@ -1378,16 +1453,34 @@ function deleteFileFromDB(id) {
   });
 }
 
-// ========== Data Management ==========
-const STORAGE_KEY = 'project_tracker_data_v2';
-function getData() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) return JSON.parse(raw);
-  return getDefaultData();
-}
-function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+// ========== Workspace Config ==========
+const WORKSPACES = [
+  { id: 'deen', name: '迪恩认证工作台', icon: '📋' },
+  { id: 'ecommerce', name: '电商工作台', icon: '🛒' },
+  { id: 'cs', name: 'CS饰品工作台', icon: '💎' },
+];
+const WS_KEY = 'project_tracker_workspace';
+const DATA_PREFIX = 'project_tracker_data_v2_';
+let currentWorkspace = localStorage.getItem(WS_KEY) || 'deen';
 
-function getDefaultData() {
+// Migrate old single-workspace data to deen workspace
+(function migrateOldData() {
+  const oldKey = 'project_tracker_data_v2';
+  if (localStorage.getItem(oldKey) && !localStorage.getItem(DATA_PREFIX + 'deen')) {
+    localStorage.setItem(DATA_PREFIX + 'deen', localStorage.getItem(oldKey));
+  }
+})();
+
+// ========== Data Management ==========
+function getData() {
+  const raw = localStorage.getItem(DATA_PREFIX + currentWorkspace);
+  if (raw) return JSON.parse(raw);
+  return getDefaultData(currentWorkspace);
+}
+function saveData(d) { localStorage.setItem(DATA_PREFIX + currentWorkspace, JSON.stringify(d)); }
+
+function getDefaultData(ws) {
+  if (ws === 'deen') {
   return {
     projects: [
       { id: 'P001', company: '中广欧特斯', client: '德国UBA', type: '德国饮用水自我申明', stage: '等样品', owner: '张三', target: '2026-11-16', budget: '42400/批', note: '需确认批次数', files: [] },
@@ -1429,12 +1522,67 @@ function getDefaultData() {
     ],
     plans: []
   };
+  }
+  // Empty default for new workspaces
+  return { projects: [], follows: [], todos: [], plans: [] };
 }
 
 let data = getData();
 if (!data.plans) data.plans = [];
 
 initDB().catch(e => console.log('DB init skipped:', e));
+
+// ========== Workspace Functions ==========
+function toggleWsDropdown(e) {
+  if (e) e.stopPropagation();
+  const dropdown = document.getElementById('ws-dropdown');
+  const chevron = document.getElementById('ws-chevron');
+  dropdown.classList.toggle('show');
+  chevron.classList.toggle('open');
+}
+function switchWorkspace(wsId) {
+  if (wsId === currentWorkspace) {
+    document.getElementById('ws-dropdown').classList.remove('show');
+    document.getElementById('ws-chevron').classList.remove('open');
+    return;
+  }
+  currentWorkspace = wsId;
+  localStorage.setItem(WS_KEY, wsId);
+  data = getData();
+  if (!data.plans) data.plans = [];
+  updateWorkspaceUI();
+  document.getElementById('ws-dropdown').classList.remove('show');
+  document.getElementById('ws-chevron').classList.remove('open');
+  showPage('dashboard');
+  updateNavBadges();
+}
+function updateWorkspaceUI() {
+  const ws = WORKSPACES.find(w => w.id === currentWorkspace);
+  if (!ws) return;
+  const iconEl = document.getElementById('ws-current-icon');
+  const nameEl = document.getElementById('ws-current-name');
+  const labelEl = document.getElementById('ws-header-label');
+  if (iconEl) iconEl.textContent = ws.icon;
+  if (nameEl) nameEl.textContent = ws.name;
+  if (labelEl) labelEl.textContent = ws.name;
+  document.querySelectorAll('.ws-option').forEach(el => {
+    const check = el.querySelector('.ws-option-check');
+    if (el.dataset.ws === currentWorkspace) {
+      el.classList.add('active');
+      if (check) check.style.visibility = 'visible';
+    } else {
+      el.classList.remove('active');
+      if (check) check.style.visibility = 'hidden';
+    }
+  });
+}
+document.addEventListener('click', function(e) {
+  const switcher = document.getElementById('ws-switcher');
+  if (switcher && !switcher.contains(e.target)) {
+    document.getElementById('ws-dropdown').classList.remove('show');
+    document.getElementById('ws-chevron').classList.remove('open');
+  }
+});
 
 // ========== Tab Navigation ==========
 function showPage(page) {
@@ -2103,6 +2251,7 @@ function showToast(msg) {
 }
 
 // ========== Init ==========
+updateWorkspaceUI();
 showPage('dashboard');
 
 
@@ -2133,6 +2282,7 @@ saveData = function(d) {
 
 // Init
 document.addEventListener('DOMContentLoaded', function() {
+  updateWorkspaceUI();
   updateHeaderDate();
   updateNavBadges();
   showPage('dashboard');
