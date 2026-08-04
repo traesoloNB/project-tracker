@@ -553,6 +553,89 @@ tr:hover td { background: #f8fafc; }
   margin-top: 4px;
 }
 
+/* Follow-up Group (by project) */
+.follow-group {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  margin-bottom: 16px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+}
+.follow-group-header {
+  padding: 14px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.follow-group-header:hover { background: #f1f5f9; }
+.follow-group-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.follow-group-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.follow-group-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: var(--accent);
+}
+.follow-group-badge.warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+.follow-group-badge.overdue {
+  background: #fee2e2;
+  color: #dc2626;
+}
+.follow-group-body { display: block; }
+.follow-group-body.collapsed { display: none; }
+.follow-tl-item {
+  padding: 12px 20px 12px 48px;
+  border-bottom: 1px solid #f1f5f9;
+  position: relative;
+}
+.follow-tl-item:last-child { border-bottom: none; }
+.follow-tl-item::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  top: 18px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.follow-tl-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 27px;
+  top: 26px;
+  bottom: -4px;
+  width: 2px;
+  background: #e5e7eb;
+}
+.follow-tl-date {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.follow-tl-content { font-size: 13px; color: var(--ink); line-height: 1.7; }
+
 /* Empty state */
 .empty {
   padding: 30px;
@@ -705,8 +788,13 @@ tr:hover td { background: #f8fafc; }
 /* Calendar */
 .cal-layout {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: minmax(320px, 1fr) 420px;
   gap: 20px;
+  align-items: start;
+}
+.cal-left {
+  position: sticky;
+  top: 0;
 }
 .cal-nav {
   display: flex;
@@ -765,17 +853,20 @@ tr:hover td { background: #f8fafc; }
 }
 .cal-day {
   background: white;
-  min-height: 90px;
+  min-height: 72px;
   padding: 6px 8px;
   cursor: pointer;
   transition: background 0.15s;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .cal-day:hover { background: #f8fafc; }
 .cal-day.other-month { background: #fafbfc; }
 .cal-day.other-month .cal-day-num { color: #d1d5db; }
 .cal-day-num {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink);
   margin-bottom: 4px;
@@ -783,8 +874,8 @@ tr:hover td { background: #f8fafc; }
 .cal-day.today .cal-day-num {
   background: var(--accent);
   color: white;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -794,27 +885,25 @@ tr:hover td { background: #f8fafc; }
   background: #eff6ff;
   box-shadow: inset 0 0 0 2px var(--accent);
 }
-.cal-day-items {
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.5;
-}
-.cal-day-item {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 1px 0;
-}
-.cal-day-item.done-item {
-  text-decoration: line-through;
-  opacity: 0.5;
-}
-.cal-day-more {
-  font-size: 10px;
-  color: var(--accent);
-  font-weight: 600;
+.cal-day-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
   margin-top: 2px;
 }
+.cal-day-dots {
+  display: flex;
+  gap: 3px;
+  margin-top: 2px;
+}
+.cal-day-dot.done-all {
+  background: var(--success);
+}
+.cal-day-items { display: none; }
+.cal-day-item { display: none; }
+.cal-day-item.done-item { display: none; }
+.cal-day-more { display: none; }
 
 /* Plan Panel */
 .plan-panel {
@@ -956,6 +1045,132 @@ tr:hover td { background: #f8fafc; }
   opacity: 0.4;
 }
 
+/* Calendar Panel Tabs */
+.cal-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+.cal-tab {
+  flex: 1;
+  padding: 12px 16px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  background: #f8fafc;
+}
+.cal-tab:hover { color: var(--ink); background: #f1f5f9; }
+.cal-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: white;
+}
+.cal-tab-badge {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 4px;
+  background: #e5e7eb;
+  color: var(--muted);
+}
+.cal-tab.active .cal-tab-badge { background: #dbeafe; color: var(--accent); }
+.cal-tab-panel { display: none; }
+.cal-tab-panel.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+/* Follow-up items in calendar panel */
+.cal-follow-item {
+  padding: 12px 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.cal-follow-item:last-child { border-bottom: none; }
+.cal-follow-project {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.cal-follow-done {
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.5;
+}
+.cal-follow-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* Mini Calendar Picker enhanced */
+.mini-cal-day {
+  padding: 4px 2px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: center;
+  position: relative;
+  transition: all 0.1s;
+}
+.mini-cal-day:hover { background: #e0e7ff; }
+.mini-cal-day .mini-cal-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.mini-cal-preview {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  font-size: 12px;
+  color: #4b5563;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.mini-cal-preview-item {
+  padding: 3px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.mini-cal-preview-bullet {
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Calendar legend */
+.cal-legend {
+  display: flex;
+  gap: 16px;
+  padding: 8px 20px 12px;
+  font-size: 11px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--rule);
+}
+.cal-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cal-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
 /* Toast */
 .toast {
   position: fixed;
@@ -981,6 +1196,7 @@ tr:hover td { background: #f8fafc; }
   .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
   .dashboard-row { grid-template-columns: 1fr; }
   .cal-layout { grid-template-columns: 1fr; }
+  .cal-left { position: static; }
 }
 @media (max-width: 768px) {
   .sidebar { width: 60px; }
@@ -1039,7 +1255,11 @@ tr:hover td { background: #f8fafc; }
     </div>
   </div>
   <nav class="sidebar-nav">
-    <div class="nav-item active" onclick="showPage('dashboard')">
+    <div class="nav-item active" onclick="showPage('calendar')">
+      <span class="nav-icon">📅</span>
+      <span class="nav-text">日历计划</span>
+    </div>
+    <div class="nav-item" onclick="showPage('dashboard')">
       <span class="nav-icon">📊</span>
       <span class="nav-text">仪表盘</span>
     </div>
@@ -1047,10 +1267,6 @@ tr:hover td { background: #f8fafc; }
       <span class="nav-icon">📁</span>
       <span class="nav-text">项目管理</span>
       <span class="nav-badge" id="nav-badge-projects">0</span>
-    </div>
-    <div class="nav-item" onclick="showPage('calendar')">
-      <span class="nav-icon">📅</span>
-      <span class="nav-text">日历计划</span>
     </div>
     <div class="nav-item" onclick="showPage('daily')">
       <span class="nav-icon">📝</span>
@@ -1074,13 +1290,19 @@ tr:hover td { background: #f8fafc; }
   <header class="top-header">
     <div style="display:flex;align-items:center;gap:12px">
       <span id="ws-header-label" style="font-size:12px;color:var(--muted);background:#eff6ff;padding:3px 10px;border-radius:6px;font-weight:600;">迪恩认证工作台</span>
-      <h1 id="page-title">仪表盘</h1>
+      <h1 id="page-title">日历计划</h1>
     </div>
-    <div class="header-meta" id="header-date"></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="header-meta" id="header-date"></div>
+      <button class="btn btn-sm" onclick="exportData()" title="导出所有数据到文件备份" style="font-size:12px;padding:4px 10px;">📥 导出备份</button>
+      <label class="btn btn-sm" title="从备份文件恢复数据" style="font-size:12px;padding:4px 10px;cursor:pointer;margin:0;">📤 导入恢复
+        <input type="file" accept=".json" style="display:none;" onchange="importData(event)">
+      </label>
+    </div>
   </header>
 
   <!-- Dashboard Page -->
-  <div id="page-dashboard" class="page-content">
+  <div id="page-dashboard" class="page-content" style="display:none">
     <div id="dashboard-content"></div>
   </div>
 
@@ -1114,13 +1336,18 @@ tr:hover td { background: #f8fafc; }
   </div>
 
   <!-- Calendar Page -->
-  <div id="page-calendar" class="page-content cal-layout" style="display:none">
-    <div class="section">
+  <div id="page-calendar" class="page-content cal-layout">
+    <div class="section cal-left">
       <div class="cal-nav">
         <button class="cal-nav-btn" onclick="calPrev()">&#8249;</button>
         <h2 id="cal-month-title"></h2>
         <button class="cal-nav-btn" onclick="calNext()">&#8250;</button>
         <button class="cal-today-btn" onclick="calToday()">今天</button>
+      </div>
+      <div class="cal-legend">
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--accent)"></div>有计划</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--success)"></div>全部完成</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#f59e0b"></div>有跟进</div>
       </div>
       <div id="cal-grid" class="cal-grid"></div>
     </div>
@@ -1131,18 +1358,27 @@ tr:hover td { background: #f8fafc; }
           <div class="plan-panel-date" id="plan-weekday"></div>
         </div>
       </div>
-      <div class="plan-progress" id="plan-progress">
-        <div class="plan-progress-text">
-          <span id="plan-progress-label">完成进度</span>
-          <span id="plan-progress-num">0/0</span>
+      <div class="cal-tabs">
+        <div class="cal-tab active" id="tab-plan" onclick="switchCalTab('plan')">📋 当日计划<span class="cal-tab-badge" id="badge-plan">0</span></div>
+        <div class="cal-tab" id="tab-follow" onclick="switchCalTab('follow')">📝 当日跟进<span class="cal-tab-badge" id="badge-follow">0</span></div>
+      </div>
+      <div class="cal-tab-panel active" id="panel-plan">
+        <div class="plan-progress" id="plan-progress">
+          <div class="plan-progress-text">
+            <span id="plan-progress-label">完成进度</span>
+            <span id="plan-progress-num">0/0</span>
+          </div>
+          <div class="plan-progress-bar">
+            <div class="plan-progress-fill" id="plan-progress-fill" style="width:0"></div>
+          </div>
         </div>
-        <div class="plan-progress-bar">
-          <div class="plan-progress-fill" id="plan-progress-fill" style="width:0"></div>
+        <div class="plan-list" id="plan-list"></div>
+        <div class="plan-add-row">
+          <input type="text" class="plan-add-input" id="plan-add-input" placeholder="输入计划，回车添加..." onkeydown="if(event.key==='Enter')addPlanItem()">
         </div>
       </div>
-      <div class="plan-list" id="plan-list"></div>
-      <div class="plan-add-row">
-        <input type="text" class="plan-add-input" id="plan-add-input" placeholder="输入计划，回车添加..." onkeydown="if(event.key==='Enter')addPlanItem()">
+      <div class="cal-tab-panel" id="panel-follow">
+        <div class="plan-list" id="cal-follow-list" style="flex:1;overflow-y:auto;padding:0;"></div>
       </div>
     </div>
   </div>
@@ -1275,8 +1511,9 @@ tr:hover td { background: #f8fafc; }
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label>日期</label>
+        <label>日期 <button type="button" class="btn btn-sm" onclick="toggleFollowDatePicker()" style="margin-left:8px;font-size:11px;">📅 引用日历</button></label>
         <input type="date" id="follow-date">
+        <div id="follow-date-picker" style="display:none;margin-top:8px;"></div>
       </div>
       <div class="form-group">
         <label>选择项目</label>
@@ -1719,6 +1956,61 @@ function toggleSidebar() {
   document.querySelector('.main-content').classList.toggle('sidebar-collapsed');
 }
 
+// ========== Data Export / Import ==========
+function exportData() {
+  const allData = {};
+  WORKSPACES.forEach(ws => {
+    const raw = localStorage.getItem(DATA_PREFIX + ws.id);
+    if (raw) allData[ws.id] = JSON.parse(raw);
+  });
+  allData._meta = {
+    exportDate: new Date().toISOString(),
+    version: '2',
+    workspaces: WORKSPACES.map(w => ({ id: w.id, name: w.name }))
+  };
+  const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = '工作台数据备份_' + dateStr + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('数据已导出备份');
+}
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!imported._meta || imported._meta.version !== '2') {
+        showToast('文件格式不正确');
+        return;
+      }
+      if (!confirm('导入将覆盖当前所有数据，确定继续吗？')) return;
+      WORKSPACES.forEach(ws => {
+        if (imported[ws.id]) {
+          localStorage.setItem(DATA_PREFIX + ws.id, JSON.stringify(imported[ws.id]));
+        }
+      });
+      data = getData();
+      if (!data.plans) data.plans = [];
+      showPage('dashboard');
+      updateWorkspaceUI();
+      updateNavBadges();
+      showToast('数据已恢复，刷新页面生效');
+    } catch(err) {
+      showToast('导入失败：' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
 // ========== Calendar ==========
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 let calYear, calMonth, selectedDate;
@@ -1786,21 +2078,19 @@ function renderCalendar() {
     const isToday = dateStr === todayStr;
     const isSelected = dateStr === selectedStr;
     const plan = getPlanForDate(dateStr);
-    let itemsHtml = '';
+    const follows = getFollowsForDate(dateStr);
+    let dotsHtml = '<div class="cal-day-dots">';
     if (plan && plan.items && plan.items.length > 0) {
-      const show = plan.items.slice(0, 3);
-      itemsHtml = '<div class="cal-day-items">';
-      show.forEach(item => {
-        itemsHtml += `<div class="cal-day-item ${item.done ? 'done-item' : ''}">${escHtml(item.text)}</div>`;
-      });
-      if (plan.items.length > 3) {
-        itemsHtml += `<div class="cal-day-more">+${plan.items.length - 3}项</div>`;
-      }
-      itemsHtml += '</div>';
+      const allDone = plan.items.every(i => i.done);
+      dotsHtml += `<div class="cal-day-dot ${allDone ? 'done-all' : ''}"></div>`;
     }
+    if (follows.length > 0) {
+      dotsHtml += `<div class="cal-day-dot" style="background:#f59e0b"></div>`;
+    }
+    dotsHtml += '</div>';
     html += `<div class="cal-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" onclick="selectDate(${calYear},${calMonth},${d})">
       <div class="cal-day-num">${d}</div>
-      ${itemsHtml}
+      ${dotsHtml}
     </div>`;
   }
 
@@ -1814,10 +2104,64 @@ function renderCalendar() {
   grid.innerHTML = html;
 }
 
+// ========== Calendar Tab Switching ==========
+let calActiveTab = 'plan';
+function switchCalTab(tab) {
+  calActiveTab = tab;
+  document.querySelectorAll('.cal-tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.cal-tab-panel').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+
+function getFollowsForDate(dateStr) {
+  return data.follows.filter(f => f.date === dateStr);
+}
+
+function renderCalFollows() {
+  const list = document.getElementById('cal-follow-list');
+  if (!selectedDate) {
+    list.innerHTML = '<div class="plan-empty-hint"><div class="hint-icon">📅</div>点击左侧日历选择日期</div>';
+    return;
+  }
+  const follows = getFollowsForDate(selectedDate);
+  if (follows.length === 0) {
+    list.innerHTML = '<div class="plan-empty-hint"><div class="hint-icon">📝</div>当天没有跟进记录<br>在「每日跟进」页面添加记录即可自动显示</div>';
+    return;
+  }
+  list.innerHTML = follows.map(f => {
+    const proj = data.projects.find(p => p.id === f.projectId);
+    const projName = proj ? proj.company + '-' + proj.client : f.projectId;
+    return `<div class="cal-follow-item">
+      <div class="cal-follow-project">${escHtml(projName)}</div>
+      <div class="cal-follow-done">${escHtml(f.done || '—')}</div>
+      ${f.block ? `<div class="cal-follow-meta" style="color:#dc2626">阻碍：${escHtml(f.block)}</div>` : ''}
+      ${f.need ? `<div class="cal-follow-meta">需要：${escHtml(f.need)}</div>` : ''}
+      ${f.next ? `<div class="cal-follow-meta">下一步：${escHtml(f.next)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function updateCalTabBadges() {
+  const planBadge = document.getElementById('badge-plan');
+  const followBadge = document.getElementById('badge-follow');
+  if (!planBadge || !followBadge) return;
+  let planCount = 0;
+  if (selectedDate) {
+    const plan = getPlanForDate(selectedDate);
+    planCount = plan && plan.items ? plan.items.length : 0;
+  }
+  const followCount = selectedDate ? getFollowsForDate(selectedDate).length : 0;
+  planBadge.textContent = planCount;
+  followBadge.textContent = followCount;
+}
+
 function selectDate(y, m, d) {
   selectedDate = formatDateStr(y, m, d);
   renderCalendar();
   renderPlanPanel();
+  renderCalFollows();
+  updateCalTabBadges();
 }
 
 function renderPlanPanel() {
@@ -1925,6 +2269,105 @@ function openModal(id) {
   if (id === 'todoModal') populateProjectSelect('todo-project');
 }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ========== Mini Calendar Date Picker for Follow-up ==========
+let pickerYear, pickerMonth;
+function toggleFollowDatePicker() {
+  const el = document.getElementById('follow-date-picker');
+  if (el.style.display === 'none') {
+    const cur = document.getElementById('follow-date').value;
+    if (cur) {
+      const parts = cur.split('-');
+      pickerYear = parseInt(parts[0]);
+      pickerMonth = parseInt(parts[1]) - 1;
+    } else {
+      const now = new Date();
+      pickerYear = now.getFullYear();
+      pickerMonth = now.getMonth();
+    }
+    renderFollowDatePicker();
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+function renderFollowDatePicker() {
+  const el = document.getElementById('follow-date-picker');
+  const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const weekdays = ['日','一','二','三','四','五','六'];
+  const firstDay = new Date(pickerYear, pickerMonth, 1).getDay();
+  const daysInMonth = new Date(pickerYear, pickerMonth + 1, 0).getDate();
+  const today = new Date();
+  const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
+  const curVal = document.getElementById('follow-date').value;
+
+  let html = '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:10px;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">';
+  html += `<button type="button" onclick="pickerMonth--;if(pickerMonth<0){pickerMonth=11;pickerYear--;}renderFollowDatePicker()" style="border:none;background:none;cursor:pointer;font-size:16px;color:#6b7280;padding:2px 6px;">&#8249;</button>`;
+  html += `<span style="font-size:13px;font-weight:700;color:#1f2937;">${pickerYear}年${monthNames[pickerMonth]}</span>`;
+  html += `<button type="button" onclick="pickerMonth++;if(pickerMonth>11){pickerMonth=0;pickerYear++;}renderFollowDatePicker()" style="border:none;background:none;cursor:pointer;font-size:16px;color:#6b7280;padding:2px 6px;">&#8250;</button>`;
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;">';
+  weekdays.forEach(w => { html += `<div style="font-size:11px;font-weight:700;color:#6b7280;padding:3px 2px;">${w}</div>`; });
+  for (let i = 0; i < firstDay; i++) { html += '<div></div>'; }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = formatDateStr(pickerYear, pickerMonth, d);
+    const isToday = dateStr === todayStr;
+    const isSelected = dateStr === curVal;
+    const plan = getPlanForDate(dateStr);
+    const hasPlan = plan && plan.items && plan.items.length > 0;
+    const hasFollow = getFollowsForDate(dateStr).length > 0;
+    let bg = 'background:white;', cl = 'color:#1f2937;';
+    if (isToday && !isSelected) { bg = 'background:#eff6ff;'; cl = 'color:#2563eb;font-weight:700;'; }
+    if (isSelected) { bg = 'background:#2563eb;'; cl = 'color:white;font-weight:700;'; }
+    let dotHtml = '';
+    if (hasPlan) {
+      const dotColor = isSelected ? '#bfdbfe' : '#2563eb';
+      dotHtml += `<div style="width:4px;height:4px;border-radius:50%;background:${dotColor};display:inline-block;margin:0 1px;"></div>`;
+    }
+    if (hasFollow) {
+      const dotColor = isSelected ? '#fde68a' : '#f59e0b';
+      dotHtml += `<div style="width:4px;height:4px;border-radius:50%;background:${dotColor};display:inline-block;margin:0 1px;"></div>`;
+    }
+    html += `<div onclick="pickFollowDate('${dateStr}')" style="padding:4px 2px;cursor:pointer;border-radius:4px;font-size:12px;${bg}${cl}position:relative;">${d}${dotHtml ? '<div style="display:flex;justify-content:center;margin-top:1px;">' + dotHtml + '</div>' : ''}</div>`;
+  }
+  html += '</div>';
+
+  // Plan preview for selected date
+  const previewDate = curVal || todayStr;
+  const previewPlan = getPlanForDate(previewDate);
+  const previewFollows = getFollowsForDate(previewDate);
+  if ((previewPlan && previewPlan.items && previewPlan.items.length > 0) || previewFollows.length > 0) {
+    html += `<div class="mini-cal-preview">`;
+    html += `<div style="font-weight:700;margin-bottom:4px;color:#1f2937;">${previewDate} 的内容</div>`;
+    if (previewPlan && previewPlan.items && previewPlan.items.length > 0) {
+      html += `<div style="font-size:11px;color:#6b7280;margin-bottom:2px;">📋 计划</div>`;
+      previewPlan.items.forEach(item => {
+        html += `<div class="mini-cal-preview-item"><span class="mini-cal-preview-bullet">${item.done ? '✓' : '○'}</span><span style="${item.done ? 'text-decoration:line-through;color:#9ca3af;' : ''}">${escHtml(item.text)}</span></div>`;
+      });
+    }
+    if (previewFollows.length > 0) {
+      html += `<div style="font-size:11px;color:#6b7280;margin:6px 0 2px;">📝 跟进 (${previewFollows.length})</div>`;
+      previewFollows.forEach(f => {
+        const proj = data.projects.find(p => p.id === f.projectId);
+        const projName = proj ? proj.company + '-' + proj.client : f.projectId;
+        html += `<div class="mini-cal-preview-item"><span class="mini-cal-preview-bullet" style="color:#f59e0b">●</span><span><strong>${escHtml(projName)}</strong>：${escHtml(f.done)}</span></div>`;
+      });
+    }
+    html += `</div>`;
+  }
+
+  html += `<div style="text-align:center;margin-top:8px;display:flex;gap:6px;justify-content:center;">`;
+  html += `<button type="button" onclick="pickerYear=new Date().getFullYear();pickerMonth=new Date().getMonth();renderFollowDatePicker()" style="border:1px solid #e5e7eb;border-radius:4px;background:white;padding:3px 10px;font-size:11px;cursor:pointer;color:#2563eb;">回到今天</button>`;
+  html += `<button type="button" onclick="document.getElementById('follow-date-picker').style.display='none'" style="border:1px solid #e5e7eb;border-radius:4px;background:#2563eb;padding:3px 10px;font-size:11px;cursor:pointer;color:white;">确认日期</button>`;
+  html += `</div>`;
+  html += '</div>';
+  el.innerHTML = html;
+}
+function pickFollowDate(dateStr) {
+  document.getElementById('follow-date').value = dateStr;
+  renderFollowDatePicker();
+}
 
 // ========== Populate Selects ==========
 function populateProjectSelect(selectId) {
@@ -2105,15 +2548,58 @@ function renderFollows() {
   if (filterDate) items = items.filter(f => f.date === filterDate);
   const list = document.getElementById('follow-list');
   if (items.length === 0) { list.innerHTML = '<div class="empty">暂无记录</div>'; return; }
-  list.innerHTML = items.map(f => {
-    const proj = data.projects.find(p => p.id === f.projectId);
-    return `<div class="timeline-item">
-      <div class="timeline-date">${f.date} — ${proj ? proj.company + '-' + proj.client : f.projectId}</div>
-      <div class="timeline-content">
-        <strong>做了什么：</strong>${f.done || '—'}<br>
-        ${f.block ? `<strong>阻碍：</strong><span style="color:#dc2626">${f.block}</span><br>` : ''}
-        ${f.need ? `<strong>需要什么：</strong>${f.need}<br>` : ''}
-        ${f.next ? `<strong>下一步：</strong>${f.next}` : ''}
+
+  // Group by project
+  const groups = {};
+  items.forEach(f => {
+    if (!groups[f.projectId]) groups[f.projectId] = [];
+    groups[f.projectId].push(f);
+  });
+
+  const today = new Date();
+  const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
+
+  list.innerHTML = Object.keys(groups).map(pid => {
+    const proj = data.projects.find(p => p.id === pid);
+    const projName = proj ? proj.company + '-' + proj.client : pid;
+    const follows = groups[pid].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const lastFollow = follows[0];
+    const daysSince = Math.round((new Date(todayStr + 'T00:00:00') - new Date(lastFollow.date + 'T00:00:00')) / (1000 * 60 * 60 * 24));
+
+    let badgeClass = '', badgeText = '';
+    if (daysSince === 0) { badgeClass = ''; badgeText = '今天跟进'; }
+    else if (daysSince === 1) { badgeClass = ''; badgeText = '昨天跟进'; }
+    else if (daysSince <= 3) { badgeClass = 'warn'; badgeText = daysSince + '天前跟进'; }
+    else { badgeClass = 'overdue'; badgeText = daysSince + '天前跟进'; }
+
+    const itemsHtml = follows.map(f => {
+      const daysAgo = Math.round((new Date(todayStr + 'T00:00:00') - new Date(f.date + 'T00:00:00')) / (1000 * 60 * 60 * 24));
+      let dateLabel = f.date;
+      if (daysAgo === 0) dateLabel = f.date + ' (今天)';
+      else if (daysAgo === 1) dateLabel = f.date + ' (昨天)';
+      else if (daysAgo > 0) dateLabel = f.date + ' (' + daysAgo + '天前)';
+
+      return `<div class="follow-tl-item">
+        <div class="follow-tl-date">${dateLabel} <span onclick="jumpToCalendar('${f.date}')" style="cursor:pointer;color:#2563eb;font-size:12px;margin-left:4px;" title="在日历中查看这天">📅</span></div>
+        <div class="follow-tl-content">
+          <strong>做了什么：</strong>${f.done || '—'}<br>
+          ${f.block ? `<strong style="color:#dc2626">阻碍：</strong>${f.block}<br>` : ''}
+          ${f.need ? `<strong>需要什么：</strong>${f.need}<br>` : ''}
+          ${f.next ? `<strong>下一步：</strong>${f.next}` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div class="follow-group">
+      <div class="follow-group-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+        <div>
+          <div class="follow-group-title">${projName}</div>
+          <div class="follow-group-meta">共${follows.length}条记录 · 最近：${lastFollow.date}</div>
+        </div>
+        <span class="follow-group-badge ${badgeClass}">${badgeText}</span>
+      </div>
+      <div class="follow-group-body">
+        ${itemsHtml}
       </div>
     </div>`;
   }).join('');
@@ -2122,6 +2608,14 @@ function clearFollowFilters() {
   document.getElementById('filter-project').value = '';
   document.getElementById('filter-date').value = '';
   renderFollows();
+}
+function jumpToCalendar(dateStr) {
+  const parts = dateStr.split('-');
+  calYear = parseInt(parts[0]);
+  calMonth = parseInt(parts[1]) - 1;
+  showPage('calendar');
+  selectDate(calYear, calMonth, parseInt(parts[2]));
+  switchCalTab('follow');
 }
 
 // ========== Render Todos ==========
@@ -2196,6 +2690,13 @@ function saveFollow() {
     next: document.getElementById('follow-next').value.trim(),
   });
   saveData(data); closeModal('followModal'); renderFollows(); showToast('跟进记录已保存');
+  // Refresh calendar if visible
+  const calPage = document.getElementById('page-calendar');
+  if (calPage && calPage.style.display !== 'none') {
+    renderCalendar();
+    renderCalFollows();
+    updateCalTabBadges();
+  }
   document.getElementById('follow-done').value = '';
   document.getElementById('follow-block').value = '';
   document.getElementById('follow-need').value = '';
@@ -2285,7 +2786,7 @@ document.addEventListener('DOMContentLoaded', function() {
   updateWorkspaceUI();
   updateHeaderDate();
   updateNavBadges();
-  showPage('dashboard');
+  showPage('calendar');
 });
 </script>
 
