@@ -1171,6 +1171,345 @@ tr:hover td { background: #f8fafc; }
   border-radius: 50%;
 }
 
+/* ===== Flow Board ===== */
+.flow-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.flow-project-pills {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.flow-pill {
+  padding: 7px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.flow-pill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #eff6ff;
+}
+.flow-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.flow-strip {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  margin-bottom: 20px;
+}
+.flow-card {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: flex 0.3s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.flow-card:hover {
+  flex: 2.8;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  transform: translateY(-2px);
+}
+.flow-card-bar {
+  height: 4px;
+  flex-shrink: 0;
+}
+.flow-card.active {
+  box-shadow: 0 0 0 2px var(--accent), 0 6px 20px rgba(37,99,235,0.2);
+}
+.flow-compact {
+  padding: 12px 14px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.flow-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+.flow-card-date {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.flow-card-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: auto;
+}
+.flow-status-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  color: white;
+  white-space: nowrap;
+}
+.flow-status-pill.done { background: #059669; }
+.flow-status-pill.red { background: #DC2626; }
+.flow-status-pill.orange { background: #EA580C; }
+.flow-status-pill.yellow { background: #CA8A04; }
+.flow-status-pill.gray { background: #9ca3af; }
+
+.flow-expand {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.2s ease;
+  padding: 0 14px;
+}
+.flow-card:hover .flow-expand {
+  max-height: 240px;
+  opacity: 1;
+  padding: 0 14px 12px 14px;
+}
+.flow-expand-title {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.flow-expand-task {
+  font-size: 12px;
+  color: var(--ink);
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.4;
+}
+.flow-task-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.flow-task-dot.done { background: #059669; }
+.flow-task-dot.progress { background: #EA580C; }
+.flow-task-dot.todo { background: #d1d5db; }
+
+.flow-detail {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+.flow-detail-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+}
+.flow-detail-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.flow-detail-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.flow-detail-body {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 0;
+}
+.flow-detail-left {
+  padding: 16px 20px;
+  border-right: 1px solid var(--rule);
+}
+.flow-detail-right {
+  padding: 16px 20px;
+  background: #fafbfc;
+}
+.flow-detail-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.flow-task-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.flow-task-row:last-child { border-bottom: none; }
+.flow-task-row.done {
+  background: #ecfdf5;
+  margin: 0 -20px;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+.flow-task-toggle {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  color: white;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.flow-task-toggle:hover { opacity: 0.85; }
+.flow-task-toggle.done { background: #059669; }
+.flow-task-toggle.progress { background: #EA580C; }
+.flow-task-toggle.todo { background: #9ca3af; }
+.flow-task-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.flow-task-delete {
+  background: none;
+  border: none;
+  color: #d1d5db;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+.flow-task-delete:hover { color: var(--accent2); }
+
+.role-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.role-tag.deen { background: #EFF6FF; color: #2563EB; }
+.role-tag.other { background: #F5F3FF; color: #7C3AED; }
+
+.flow-follow-item {
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 12px;
+}
+.flow-follow-item:last-child { border-bottom: none; }
+.flow-follow-date {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.flow-follow-text {
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.flow-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  background: var(--surface);
+  border: 1px dashed var(--rule);
+  border-radius: 12px;
+}
+.flow-add-row {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+/* Status-tinted card backgrounds */
+.flow-card.status-done { background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 30%); }
+.flow-card.status-red { background: linear-gradient(180deg, #fef2f2 0%, #ffffff 30%); }
+.flow-card.status-orange { background: linear-gradient(180deg, #fff7ed 0%, #ffffff 30%); }
+.flow-card.status-yellow { background: linear-gradient(180deg, #fefce8 0%, #ffffff 30%); }
+.flow-card.status-gray { background: var(--surface); }
+
+@media (max-width: 1024px) {
+  .flow-detail-body { grid-template-columns: 1fr; }
+  .flow-detail-left { border-right: none; border-bottom: 1px solid var(--rule); }
+  .flow-strip { flex-wrap: wrap; }
+  .flow-card { min-width: calc(50% - 5px); }
+}
+@media (max-width: 768px) {
+  .flow-card { min-width: calc(100% - 0px); }
+}
+
+/* ===== Dashboard Missing Items ===== */
+.missing-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.missing-item-row:last-child { border-bottom: none; }
+.missing-item-info { flex: 1; min-width: 0; }
+.missing-item-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.missing-item-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.missing-item-date {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  color: white;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.missing-item-date.red { background: #DC2626; }
+.missing-item-date.orange { background: #EA580C; }
+.missing-item-date.yellow { background: #CA8A04; }
+.missing-item-date.gray { background: #9ca3af; }
+
 /* Toast */
 .toast {
   position: fixed;
@@ -1308,29 +1647,18 @@ tr:hover td { background: #f8fafc; }
 
   <!-- Overview Page -->
   <div id="page-overview" class="page-content" style="display:none">
-    <div class="stats-grid">
-      <div class="stat-card p0">
-        <div class="number" id="stat-p0">0</div>
-        <div class="label">P0 紧急待办</div>
-      </div>
-      <div class="stat-card p1">
-        <div class="number" id="stat-p1">0</div>
-        <div class="label">P1 紧急待办</div>
-      </div>
-      <div class="stat-card p2">
-        <div class="number" id="stat-p2">0</div>
-        <div class="label">P2 正常进行中</div>
-      </div>
-      <div class="stat-card done">
-        <div class="number" id="stat-done">0</div>
-        <div class="label">今日已完成</div>
-      </div>
+    <div class="flow-toolbar">
+      <div class="flow-project-pills" id="flow-project-pills"></div>
+      <button class="btn btn-primary" onclick="openModal('projectModal')">+ 新建项目</button>
     </div>
-    <div class="section">
-      <div class="section-header">
-        <h2>项目列表</h2>
-        <button class="btn btn-primary" onclick="openModal('projectModal')">+ 新建项目</button>
-      </div>
+    <div id="flow-board"></div>
+    <div id="flow-detail-panel"></div>
+    <!-- Hidden legacy containers for backward compatibility -->
+    <div style="display:none;">
+      <span id="stat-p0">0</span>
+      <span id="stat-p1">0</span>
+      <span id="stat-p2">0</span>
+      <span id="stat-done">0</span>
       <div id="project-list"></div>
     </div>
   </div>
@@ -1517,7 +1845,11 @@ tr:hover td { background: #f8fafc; }
       </div>
       <div class="form-group">
         <label>选择项目</label>
-        <select id="follow-project"></select>
+        <select id="follow-project" onchange="populateFollowMilestones()"></select>
+      </div>
+      <div class="form-group">
+        <label>关联流程节点</label>
+        <select id="follow-milestone"></select>
       </div>
       <div class="form-group">
         <label>今天做了什么</label>
@@ -1720,20 +2052,43 @@ function getDefaultData(ws) {
   if (ws === 'deen') {
   return {
     projects: [
-      { id: 'P001', company: '中广欧特斯', client: '德国UBA', type: '德国饮用水自我申明', stage: '等样品', owner: '张三', target: '2026-11-16', budget: '42400/批', note: '需确认批次数', files: [] },
-      { id: 'P002', company: '中广欧特斯', client: '意大利DM174', type: '意大利饮用水测试', stage: '资料整理', owner: '张三', target: '2026-10-20', budget: '8480/材料', note: '8.15前送样', files: [] },
-      { id: 'P003', company: '中广欧特斯', client: '法国ACS', type: '法国ACS认证', stage: '等证明文件', owner: '李四', target: '2026-11-05', budget: '30000', note: '8.5递交申请', files: [] },
-      { id: 'P004', company: '中广欧特斯', client: '波兰PZH', type: '波兰PZH认证', stage: '资料整理', owner: '李四', target: '2026-10-05', budget: '40000', note: '可用德/意报告转', files: [] },
-      { id: 'P005', company: '中广欧特斯', client: '罗匈注册', type: '罗马尼亚/匈牙利卫生注册', stage: '等账号', owner: '王五', target: '2026-11-05', budget: '15000', note: '需中广营业执照', files: [] },
-      { id: 'P006', company: '中广欧特斯', client: '葡西申明', type: '葡萄牙/西班牙自我申明', stage: '待启动', owner: '王五', target: '2026-11-20', budget: '0', note: '依赖德国项目', files: [] },
+      { id: 'P001', company: '中广欧特斯', client: '德国UBA', type: '德国饮用水自我申明', stage: '等样品', owner: '张三', target: '2026-11-16', budget: '42400/批', note: '需确认批次数', files: [], milestones: [
+        { id: 'ms1', title: '模板交接', endDate: '2026-07-10', tasks: [
+          { id: 'ms1t1', role: '迪恩', text: '提供模板', status: 'done', date: '2026-07-10' },
+          { id: 'ms1t2', role: '中广', text: '理解模板', status: 'done', date: '2026-07-10' },
+        ]},
+        { id: 'ms2', title: '申请与样品', startDate: '2026-07-20', endDate: '2026-07-25', tasks: [
+          { id: 'ms2t1', role: '迪恩', text: '走国外申请流程', status: 'done', date: '2026-07-20' },
+          { id: 'ms2t2', role: '中广', text: '提供搪瓷样品', status: 'progress', date: '2026-07-25' },
+          { id: 'ms2t3', role: '迪恩', text: '支付机构费用', status: 'done', date: '2026-07-25' },
+          { id: 'ms2t4', role: '中广', text: '整理相关资料', status: 'todo', date: '2026-07-25' },
+        ]},
+        { id: 'ms3', title: '样品到机构', endDate: '2026-08-05', tasks: [
+          { id: 'ms3t1', role: '迪恩', text: '搪瓷样品到机构+核对资料', status: 'todo', date: '2026-08-05' },
+          { id: 'ms3t2', role: '中广', text: '和迪恩核对资料', status: 'todo', date: '2026-08-05' },
+        ]},
+        { id: 'ms4', title: '测试完成', endDate: '2026-11-05', tasks: [
+          { id: 'ms4t1', role: '迪恩', text: '搪瓷测试完成', status: 'todo', date: '2026-11-05' },
+          { id: 'ms4t2', role: '中广', text: '完成所有资料', status: 'todo', date: '2026-11-05' },
+        ]},
+        { id: 'ms5', title: '自我申明', startDate: '2026-11-06', endDate: '2026-11-16', tasks: [
+          { id: 'ms5t1', role: '迪恩', text: '协助自我申明', status: 'todo', date: '2026-11-16' },
+          { id: 'ms5t2', role: '中广', text: '完成申明', status: 'todo', date: '2026-11-16' },
+        ]},
+      ] },
+      { id: 'P002', company: '中广欧特斯', client: '意大利DM174', type: '意大利饮用水测试', stage: '资料整理', owner: '张三', target: '2026-10-20', budget: '8480/材料', note: '8.15前送样', files: [], milestones: [] },
+      { id: 'P003', company: '中广欧特斯', client: '法国ACS', type: '法国ACS认证', stage: '等证明文件', owner: '李四', target: '2026-11-05', budget: '30000', note: '8.5递交申请', files: [], milestones: [] },
+      { id: 'P004', company: '中广欧特斯', client: '波兰PZH', type: '波兰PZH认证', stage: '资料整理', owner: '李四', target: '2026-10-05', budget: '40000', note: '可用德/意报告转', files: [], milestones: [] },
+      { id: 'P005', company: '中广欧特斯', client: '罗匈注册', type: '罗马尼亚/匈牙利卫生注册', stage: '等账号', owner: '王五', target: '2026-11-05', budget: '15000', note: '需中广营业执照', files: [], milestones: [] },
+      { id: 'P006', company: '中广欧特斯', client: '葡西申明', type: '葡萄牙/西班牙自我申明', stage: '待启动', owner: '王五', target: '2026-11-20', budget: '0', note: '依赖德国项目', files: [], milestones: [] },
     ],
     follows: [
-      { id: 1, date: '2026-07-10', projectId: 'P001', done: '迪恩提供模板', block: '无', need: '无', next: '理解模板要求，开始整理资料' },
-      { id: 2, date: '2026-07-15', projectId: 'P001', done: '联系粉厂确认样品', block: '粉厂回复7.15批次不确定', need: '需要粉厂确认具体发货时间', next: '催促粉厂，备选其他批次' },
-      { id: 3, date: '2026-07-20', projectId: 'P001', done: '再次催促粉厂', block: '粉厂未按时发货', need: '需要粉厂立即发货或换批次', next: '明天继续催，必要时找领导协调' },
-      { id: 4, date: '2026-07-21', projectId: 'P002', done: '开始整理爆炸图', block: '电加热爆炸图缺少子零件信息', need: '需要电加热供应商提供爆炸图', next: '联系电加热供应商' },
-      { id: 5, date: '2026-07-22', projectId: 'P003', done: '发邮件给有机材料供应商要ACS证书', block: '供应商未回复', need: '需要供应商尽快提供ACS证书', next: '明天电话催供应商' },
-      { id: 6, date: '2026-07-23', projectId: 'P001', done: '继续催粉厂，领导介入协调', block: '粉厂承诺7.25发货', need: '等7.25样品到货确认', next: '准备寄样，走申请流程' },
+      { id: 1, date: '2026-07-10', projectId: 'P001', milestoneId: 'ms1', done: '迪恩提供模板', block: '无', need: '无', next: '理解模板要求，开始整理资料' },
+      { id: 2, date: '2026-07-15', projectId: 'P001', milestoneId: 'ms2', done: '联系粉厂确认样品', block: '粉厂回复7.15批次不确定', need: '需要粉厂确认具体发货时间', next: '催促粉厂，备选其他批次' },
+      { id: 3, date: '2026-07-20', projectId: 'P001', milestoneId: 'ms2', done: '再次催促粉厂', block: '粉厂未按时发货', need: '需要粉厂立即发货或换批次', next: '明天继续催，必要时找领导协调' },
+      { id: 4, date: '2026-07-21', projectId: 'P002', milestoneId: null, done: '开始整理爆炸图', block: '电加热爆炸图缺少子零件信息', need: '需要电加热供应商提供爆炸图', next: '联系电加热供应商' },
+      { id: 5, date: '2026-07-22', projectId: 'P003', milestoneId: null, done: '发邮件给有机材料供应商要ACS证书', block: '供应商未回复', need: '需要供应商尽快提供ACS证书', next: '明天电话催供应商' },
+      { id: 6, date: '2026-07-23', projectId: 'P001', milestoneId: 'ms2', done: '继续催粉厂，领导介入协调', block: '粉厂承诺7.25发货', need: '等7.25样品到货确认', next: '准备寄样，走申请流程' },
     ],
     todos: [
       { id: 1, projectId: 'P001', title: '提供搪瓷样品（10片+100g粉）', deadline: '2026-07-25', need: '粉厂样品', who: '粉厂', priority: 'P0', status: '进行中', note: '已逾期4天，7.25承诺发货' },
@@ -1766,6 +2121,15 @@ function getDefaultData(ws) {
 
 let data = getData();
 if (!data.plans) data.plans = [];
+
+// ========== Data Migration: add milestones + milestoneId ==========
+data.projects.forEach(p => {
+  if (!p.milestones) p.milestones = [];
+});
+data.follows.forEach(f => {
+  if (!f.milestoneId) f.milestoneId = null;
+});
+saveData(data);
 
 initDB().catch(e => console.log('DB init skipped:', e));
 
@@ -1835,7 +2199,7 @@ function showPage(page) {
   const t = document.getElementById('page-title');
   if (t) t.textContent = titles[page] || page;
   if (page === 'dashboard') renderDashboard();
-  if (page === 'overview') renderOverview();
+  if (page === 'overview') renderFlowBoard();
   if (page === 'calendar') { renderCalendar(); selectToday(); }
   if (page === 'daily') renderFollows();
   if (page === 'todos') renderTodos();
@@ -1885,6 +2249,53 @@ function renderDashboard() {
         <div class="db-follow-text">${escHtml(f.done || '')}</div>
       </div>`;
     }).join('');
+  }
+
+  // Missing / in-progress items from milestones
+  const missingItems = [];
+  data.projects.forEach(p => {
+    (p.milestones || []).forEach(m => {
+      (m.tasks || []).forEach(t => {
+        if (t.status === 'todo' || t.status === 'progress') {
+          missingItems.push({
+            projId: p.id,
+            projName: p.company + '-' + p.client,
+            msTitle: m.title,
+            task: t,
+            msStatus: getMilestoneStatus(m),
+            dueDate: m.endDate || ''
+          });
+        }
+      });
+    });
+  });
+  const _statusOrder = { red: 0, orange: 1, yellow: 2, gray: 3, done: 4 };
+  missingItems.sort((a, b) => {
+    const so = (_statusOrder[a.msStatus] != null ? _statusOrder[a.msStatus] : 5) - (_statusOrder[b.msStatus] != null ? _statusOrder[b.msStatus] : 5);
+    if (so !== 0) return so;
+    const ad = a.dueDate || '9999-12-31';
+    const bd = b.dueDate || '9999-12-31';
+    return ad.localeCompare(bd);
+  });
+  let missingHtml = '';
+  if (missingItems.length === 0) {
+    missingHtml = '<div class="empty">所有流程节点任务都已完成，太棒了！</div>';
+  } else {
+    missingHtml = missingItems.slice(0, 12).map(it => {
+      const dateLabel = it.dueDate || '未排期';
+      const dateClass = (it.msStatus === 'done') ? 'gray' : it.msStatus;
+      return `<div class="missing-item-row">
+        <div class="missing-item-info">
+          <div class="missing-item-title">${escHtml(it.task.text)}</div>
+          <div class="missing-item-meta">${escHtml(it.projName)} · ${escHtml(it.msTitle)}</div>
+        </div>
+        <span class="role-tag ${roleTagClass(it.task.role)}">${escHtml(it.task.role)}</span>
+        <span class="missing-item-date ${dateClass}">${dateLabel}</span>
+      </div>`;
+    }).join('');
+    if (missingItems.length > 12) {
+      missingHtml += `<div style="text-align:center;color:var(--muted);font-size:12px;padding:8px 0;">还有 ${missingItems.length - 12} 项，去「项目管理」查看全部</div>`;
+    }
   }
 
   const dash = document.getElementById('dashboard-content');
@@ -1940,6 +2351,10 @@ function renderDashboard() {
           ${recentFollowHtml}
         </div>
       </div>
+    </div>
+    <div class="dashboard-card" style="margin-top:16px;">
+      <h3>⚠ 缺失/进行中清单</h3>
+      ${missingHtml}
     </div>
   `;
 }
@@ -2265,6 +2680,7 @@ function openModal(id) {
   if (id === 'followModal') {
     document.getElementById('follow-date').value = new Date().toISOString().split('T')[0];
     populateProjectSelect('follow-project');
+    populateFollowMilestones();
   }
   if (id === 'todoModal') populateProjectSelect('todo-project');
 }
@@ -2374,9 +2790,306 @@ function populateProjectSelect(selectId) {
   const sel = document.getElementById(selectId);
   sel.innerHTML = data.projects.map(p => `<option value="${p.id}">${p.id} — ${p.company}-${p.client}</option>`).join('');
 }
+function populateFollowMilestones() {
+  const sel = document.getElementById('follow-milestone');
+  if (!sel) return;
+  const projId = document.getElementById('follow-project').value;
+  const proj = data.projects.find(p => p.id === projId);
+  const milestones = (proj && proj.milestones) ? proj.milestones : [];
+  sel.innerHTML = '<option value="">不关联节点</option>' + milestones.map(m => {
+    const dateText = formatMilestoneDate(m);
+    return `<option value="${m.id}">${escHtml(m.title)}（${dateText}）</option>`;
+  }).join('');
+}
 function populateProjectFilter() {
   const sel = document.getElementById('filter-project');
   sel.innerHTML = '<option value="">所有项目</option>' + data.projects.map(p => `<option value="${p.id}">${p.company}-${p.client}</option>`).join('');
+}
+
+// ========== Flow Board ==========
+let currentFlowProject = null;
+let currentFlowMilestone = 0;
+
+const FLOW_STATUS_COLORS = {
+  done: '#059669',
+  red: '#DC2626',
+  orange: '#EA580C',
+  yellow: '#CA8A04',
+  gray: '#d1d5db'
+};
+const FLOW_STATUS_LABELS = {
+  done: '已完成',
+  red: '紧急/逾期',
+  orange: '14天内',
+  yellow: '进行中',
+  gray: '未排期'
+};
+
+function getMilestoneStatus(milestone) {
+  const tasks = milestone.tasks || [];
+  if (tasks.length > 0 && tasks.every(t => t.status === 'done')) {
+    return 'done';
+  }
+  const endDate = milestone.endDate;
+  if (!endDate) return 'gray';
+  const todayStr = new Date().toISOString().split('T')[0];
+  const today = new Date(todayStr + 'T00:00:00');
+  const due = new Date(endDate + 'T00:00:00');
+  const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24));
+  if (diffDays <= 7) return 'red';
+  if (diffDays <= 14) return 'orange';
+  return 'yellow';
+}
+
+function roleTagClass(role) {
+  return role === '迪恩' ? 'deen' : 'other';
+}
+
+function formatMilestoneDate(m) {
+  if (m.startDate && m.endDate) {
+    return m.startDate + ' ~ ' + m.endDate;
+  }
+  return m.endDate || '未排期';
+}
+
+function renderFlowBoard() {
+  const pillsEl = document.getElementById('flow-project-pills');
+  const boardEl = document.getElementById('flow-board');
+  const detailEl = document.getElementById('flow-detail-panel');
+  if (!pillsEl || !boardEl || !detailEl) return;
+
+  if (data.projects.length === 0) {
+    pillsEl.innerHTML = '<span style="color:var(--muted);font-size:13px;">暂无项目，点击右侧「新建项目」添加</span>';
+    boardEl.innerHTML = '';
+    detailEl.innerHTML = '';
+    return;
+  }
+  // Ensure currentFlowProject is valid
+  if (!currentFlowProject || !data.projects.find(p => p.id === currentFlowProject)) {
+    currentFlowProject = data.projects[0].id;
+    currentFlowMilestone = 0;
+  }
+  pillsEl.innerHTML = data.projects.map(p => {
+    const active = p.id === currentFlowProject ? 'active' : '';
+    return `<div class="flow-pill ${active}" onclick="selectFlowProject('${p.id}')">${p.id} · ${escHtml(p.client || p.company)}</div>`;
+  }).join('');
+
+  const project = data.projects.find(p => p.id === currentFlowProject);
+  renderFlowStrip(project);
+  renderFlowDetail(project, currentFlowMilestone);
+}
+
+function renderFlowStrip(project) {
+  const board = document.getElementById('flow-board');
+  const milestones = project.milestones || [];
+  if (milestones.length === 0) {
+    board.innerHTML = `<div class="flow-empty">
+      <div style="font-size:32px;margin-bottom:8px;opacity:0.4;">📋</div>
+      该项目暂无流程节点<br>
+      <span style="font-size:12px;color:var(--muted);">添加流程节点来规划项目里程碑</span><br>
+      <button class="btn btn-primary" style="margin-top:12px;" onclick="addMilestone('${project.id}')">+ 添加流程节点</button>
+    </div>`;
+    return;
+  }
+  let html = '<div class="flow-strip">';
+  milestones.forEach((m, idx) => {
+    const status = getMilestoneStatus(m);
+    const color = FLOW_STATUS_COLORS[status];
+    const active = idx === currentFlowMilestone ? 'active' : '';
+    const dateText = formatMilestoneDate(m);
+    const tasks = m.tasks || [];
+    const doneCount = tasks.filter(t => t.status === 'done').length;
+    const taskPreview = tasks.slice(0, 4).map(t => {
+      return `<div class="flow-expand-task"><span class="flow-task-dot ${t.status}"></span><span class="role-tag ${roleTagClass(t.role)}">${escHtml(t.role)}</span><span>${escHtml(t.text)}</span></div>`;
+    }).join('');
+    const moreText = tasks.length > 4 ? `<div class="flow-expand-task" style="color:var(--muted);">还有 ${tasks.length - 4} 项...</div>` : '';
+    html += `<div class="flow-card status-${status} ${active}" onclick="selectFlowMilestone(${idx})">
+      <div class="flow-card-bar" style="background:${color};"></div>
+      <div class="flow-compact">
+        <div class="flow-card-title">${idx + 1}. ${escHtml(m.title)}</div>
+        <div class="flow-card-date">${dateText}</div>
+        <div class="flow-card-pills">
+          <span class="flow-status-pill ${status}">${FLOW_STATUS_LABELS[status]}</span>
+          ${tasks.length > 0 ? `<span class="flow-status-pill ${status === 'done' ? 'done' : 'gray'}">${doneCount}/${tasks.length}</span>` : ''}
+        </div>
+      </div>
+      <div class="flow-expand">
+        <div class="flow-expand-title">任务预览</div>
+        ${taskPreview || '<div class="flow-expand-task" style="color:var(--muted);">暂无任务</div>'}
+        ${moreText}
+      </div>
+    </div>`;
+  });
+  html += `</div>
+  <div class="flow-add-row">
+    <button class="btn btn-sm btn-ghost" onclick="addMilestone('${project.id}')">+ 添加流程节点</button>
+  </div>`;
+  board.innerHTML = html;
+}
+
+function renderFlowDetail(project, milestoneIdx) {
+  const panel = document.getElementById('flow-detail-panel');
+  const milestones = project.milestones || [];
+  if (milestones.length === 0) { panel.innerHTML = ''; return; }
+  if (milestoneIdx < 0 || milestoneIdx >= milestones.length) milestoneIdx = 0;
+  const m = milestones[milestoneIdx];
+  const status = getMilestoneStatus(m);
+  const tasks = m.tasks || [];
+  const doneCount = tasks.filter(t => t.status === 'done').length;
+  // Follow-ups synced from daily follow-ups for this milestone
+  const follows = data.follows
+    .filter(f => f.projectId === project.id && f.milestoneId === m.id)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const tasksHtml = tasks.length === 0
+    ? '<div class="empty">该节点暂无任务，点击下方添加</div>'
+    : tasks.map(t => {
+        const toggleLabel = t.status === 'done' ? '已完成' : t.status === 'progress' ? '进行中' : '未开始';
+        return `<div class="flow-task-row ${t.status === 'done' ? 'done' : ''}">
+          <button class="flow-task-toggle ${t.status}" onclick="toggleFlowTask('${project.id}','${m.id}','${t.id}')" title="点击切换状态">${toggleLabel}</button>
+          <span class="role-tag ${roleTagClass(t.role)}">${escHtml(t.role)}</span>
+          <span class="flow-task-text">${escHtml(t.text)}${t.date ? ` <span style="color:var(--muted);font-size:11px;">(${t.date})</span>` : ''}</span>
+          <button class="flow-task-delete" onclick="deleteFlowTask('${project.id}','${m.id}','${t.id}')" title="删除任务">×</button>
+        </div>`;
+      }).join('');
+
+  const followsHtml = follows.length === 0
+    ? '<div class="empty">暂无关联跟进记录<br><span style="font-size:11px;">在「每日跟进」中添加记录并选择此节点即可自动关联</span></div>'
+    : follows.map(f => `<div class="flow-follow-item">
+        <div class="flow-follow-date">${f.date}</div>
+        <div class="flow-follow-text">${escHtml(f.done || '—')}</div>
+        ${f.block ? `<div class="flow-follow-text" style="color:#dc2626;font-size:11px;">阻碍：${escHtml(f.block)}</div>` : ''}
+        ${f.next ? `<div class="flow-follow-text" style="color:var(--muted);font-size:11px;">下一步：${escHtml(f.next)}</div>` : ''}
+      </div>`).join('');
+
+  panel.innerHTML = `<div class="flow-detail">
+    <div class="flow-detail-header">
+      <div>
+        <div class="flow-detail-title">${escHtml(m.title)}</div>
+        <div class="flow-detail-meta">${formatMilestoneDate(m)} · <span class="flow-status-pill ${status}">${FLOW_STATUS_LABELS[status]}</span> · 共 ${tasks.length} 项任务（已完成 ${doneCount}）</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-sm btn-ghost" onclick="addFlowTask('${project.id}','${m.id}')">+ 添加任务</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteMilestone('${project.id}','${m.id}')">删除节点</button>
+      </div>
+    </div>
+    <div class="flow-detail-body">
+      <div class="flow-detail-left">
+        <div class="flow-detail-section-title">✅ 任务清单</div>
+        ${tasksHtml}
+        <div style="margin-top:10px;">
+          <button class="btn btn-sm btn-ghost" onclick="addFlowTask('${project.id}','${m.id}')">+ 添加任务</button>
+        </div>
+      </div>
+      <div class="flow-detail-right">
+        <div class="flow-detail-section-title">📝 关联跟进记录</div>
+        ${followsHtml}
+      </div>
+    </div>
+  </div>`;
+}
+
+function selectFlowProject(projId) {
+  currentFlowProject = projId;
+  currentFlowMilestone = 0;
+  renderFlowBoard();
+}
+
+function selectFlowMilestone(idx) {
+  currentFlowMilestone = idx;
+  const project = data.projects.find(p => p.id === currentFlowProject);
+  if (project) renderFlowDetail(project, currentFlowMilestone);
+  document.querySelectorAll('#flow-board .flow-card').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+}
+
+function toggleFlowTask(projId, msId, taskId) {
+  const project = data.projects.find(p => p.id === projId);
+  if (!project || !project.milestones) return;
+  const ms = project.milestones.find(m => m.id === msId);
+  if (!ms || !ms.tasks) return;
+  const task = ms.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  // Cycle: todo → progress → done → todo
+  if (task.status === 'todo') task.status = 'progress';
+  else if (task.status === 'progress') task.status = 'done';
+  else task.status = 'todo';
+  saveData(data);
+  renderFlowBoard();
+}
+
+// ========== Milestone Editing ==========
+function addMilestone(projId) {
+  const title = prompt('请输入流程节点名称：', '新节点');
+  if (title === null) return;
+  if (!title.trim()) { showToast('请填写节点名称'); return; }
+  const endDate = prompt('请输入截止日期（YYYY-MM-DD，可留空表示未排期）：', '');
+  const project = data.projects.find(p => p.id === projId);
+  if (!project) return;
+  if (!project.milestones) project.milestones = [];
+  const newMs = {
+    id: 'ms_' + Date.now(),
+    title: title.trim(),
+    endDate: endDate ? endDate.trim() : '',
+    tasks: []
+  };
+  project.milestones.push(newMs);
+  saveData(data);
+  currentFlowMilestone = project.milestones.length - 1;
+  renderFlowBoard();
+  showToast('流程节点已添加');
+}
+
+function deleteMilestone(projId, msId) {
+  if (!confirm('确定删除这个流程节点及其所有任务？关联的跟进记录将解除关联。')) return;
+  const project = data.projects.find(p => p.id === projId);
+  if (!project || !project.milestones) return;
+  project.milestones = project.milestones.filter(m => m.id !== msId);
+  // Clear milestoneId on related follows
+  data.follows.forEach(f => { if (f.milestoneId === msId && f.projectId === projId) f.milestoneId = null; });
+  saveData(data);
+  if (currentFlowMilestone >= project.milestones.length) {
+    currentFlowMilestone = Math.max(0, project.milestones.length - 1);
+  }
+  renderFlowBoard();
+  showToast('流程节点已删除');
+}
+
+function addFlowTask(projId, msId) {
+  const role = prompt('请输入负责角色（如：迪恩 / 中广）：', '迪恩');
+  if (role === null) return;
+  if (!role.trim()) { showToast('请填写负责角色'); return; }
+  const text = prompt('请输入任务内容：', '');
+  if (text === null) return;
+  if (!text.trim()) { showToast('请填写任务内容'); return; }
+  const project = data.projects.find(p => p.id === projId);
+  if (!project || !project.milestones) return;
+  const ms = project.milestones.find(m => m.id === msId);
+  if (!ms) return;
+  if (!ms.tasks) ms.tasks = [];
+  ms.tasks.push({
+    id: 't_' + Date.now(),
+    role: role.trim(),
+    text: text.trim(),
+    status: 'todo',
+    date: ms.endDate || ''
+  });
+  saveData(data);
+  renderFlowBoard();
+  showToast('任务已添加');
+}
+
+function deleteFlowTask(projId, msId, taskId) {
+  if (!confirm('确定删除这个任务？')) return;
+  const project = data.projects.find(p => p.id === projId);
+  if (!project || !project.milestones) return;
+  const ms = project.milestones.find(m => m.id === msId);
+  if (!ms || !ms.tasks) return;
+  ms.tasks = ms.tasks.filter(t => t.id !== taskId);
+  saveData(data);
+  renderFlowBoard();
+  showToast('任务已删除');
 }
 
 // ========== Render Overview ==========
@@ -2673,9 +3386,9 @@ function saveProject() {
     owner: document.getElementById('proj-owner').value.trim(),
     target: document.getElementById('proj-target').value,
     budget: document.getElementById('proj-budget').value.trim(),
-    note: document.getElementById('proj-note').value.trim(), files: [],
+    note: document.getElementById('proj-note').value.trim(), files: [], milestones: [],
   });
-  saveData(data); closeModal('projectModal'); renderOverview(); showToast('项目已创建');
+  saveData(data); closeModal('projectModal'); renderOverview(); renderFlowBoard(); showToast('项目已创建');
   ['proj-company','proj-id','proj-client','proj-type','proj-stage','proj-owner','proj-target','proj-budget','proj-note'].forEach(id => document.getElementById(id).value = '');
 }
 function saveFollow() {
@@ -2683,8 +3396,10 @@ function saveFollow() {
   const date = document.getElementById('follow-date').value;
   const done = document.getElementById('follow-done').value.trim();
   if (!date || !done) { showToast('请填写日期和做了什么'); return; }
+  const milestoneIdRaw = document.getElementById('follow-milestone').value;
+  const milestoneId = milestoneIdRaw ? milestoneIdRaw : null;
   data.follows.push({
-    id: Date.now(), date, projectId, done,
+    id: Date.now(), date, projectId, milestoneId, done,
     block: document.getElementById('follow-block').value.trim(),
     need: document.getElementById('follow-need').value.trim(),
     next: document.getElementById('follow-next').value.trim(),
@@ -2696,6 +3411,12 @@ function saveFollow() {
     renderCalendar();
     renderCalFollows();
     updateCalTabBadges();
+  }
+  // Refresh flow board detail if visible
+  const overviewPage = document.getElementById('page-overview');
+  if (overviewPage && overviewPage.style.display !== 'none') {
+    const project = data.projects.find(p => p.id === currentFlowProject);
+    if (project) renderFlowDetail(project, currentFlowMilestone);
   }
   document.getElementById('follow-done').value = '';
   document.getElementById('follow-block').value = '';
@@ -2736,6 +3457,7 @@ function deleteTodo(id) {
 function quickFollow(projectId) {
   openModal('followModal');
   document.getElementById('follow-project').value = projectId;
+  populateFollowMilestones();
   document.getElementById('follow-date').value = new Date().toISOString().split('T')[0];
 }
 function quickTodo(projectId) {
