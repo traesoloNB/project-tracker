@@ -1208,6 +1208,28 @@ tr:hover td { background: #f8fafc; }
   border-color: var(--accent);
   color: white;
 }
+.flow-pill-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 13px;
+  line-height: 1;
+  margin-left: 4px;
+  opacity: 0.4;
+  transition: all 0.15s;
+}
+.flow-pill-del:hover {
+  opacity: 1;
+  background: rgba(220,38,38,0.15);
+  color: #dc2626;
+}
+.flow-pill.active .flow-pill-del:hover {
+  background: rgba(255,255,255,0.25);
+  color: white;
+}
 
 .flow-strip {
   display: flex;
@@ -1973,6 +1995,65 @@ tr:hover td { background: #f8fafc; }
   </div>
 </div>
 
+<!-- Milestone Modal -->
+<div class="modal-overlay" id="milestoneModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 id="ms-modal-title">添加流程节点</h3>
+      <button class="modal-close" onclick="closeModal('milestoneModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ms-proj-id">
+      <input type="hidden" id="ms-ms-id">
+      <div class="form-group">
+        <label>节点名称 <span style="color:#dc2626">*</span></label>
+        <input type="text" id="ms-title" placeholder="如：模板交接、样品到机构、测试完成...">
+      </div>
+      <div class="form-group">
+        <label>截止日期</label>
+        <input type="date" id="ms-end-date">
+        <p style="font-size:12px;color:var(--muted);margin-top:4px">留空表示未排期</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('milestoneModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveMilestone()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task Modal -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 id="task-modal-title">添加任务</h3>
+      <button class="modal-close" onclick="closeModal('taskModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="task-proj-id">
+      <input type="hidden" id="task-ms-id">
+      <div class="form-group">
+        <label>负责角色 <span style="color:#dc2626">*</span></label>
+        <input type="text" id="task-role" placeholder="如：迪恩、中广、TCL..." list="role-suggestions">
+        <datalist id="role-suggestions">
+          <option value="迪恩">
+          <option value="中广">
+          <option value="TCL">
+          <option value="日出东方">
+        </datalist>
+      </div>
+      <div class="form-group">
+        <label>任务内容 <span style="color:#dc2626">*</span></label>
+        <textarea id="task-text" placeholder="如：提供搪瓷样品、走国外申请流程..." rows="3"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('taskModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveFlowTask()">保存</button>
+    </div>
+  </div>
+</div>
+
 
 
 <script>
@@ -2034,6 +2115,14 @@ let currentWorkspace = localStorage.getItem(WS_KEY) || 'deen';
 
 // Migrate old single-workspace data to deen workspace
 (function migrateOldData() {
+  // Force clear old demo data on v3 upgrade
+  const VER_KEY = 'project_tracker_data_version';
+  if (localStorage.getItem(VER_KEY) !== '3') {
+    // Clear all workspace data
+    WORKSPACES.forEach(ws => localStorage.removeItem(DATA_PREFIX + ws.id));
+    localStorage.removeItem('project_tracker_data_v2');
+    localStorage.setItem(VER_KEY, '3');
+  }
   const oldKey = 'project_tracker_data_v2';
   if (localStorage.getItem(oldKey) && !localStorage.getItem(DATA_PREFIX + 'deen')) {
     localStorage.setItem(DATA_PREFIX + 'deen', localStorage.getItem(oldKey));
@@ -2049,73 +2138,6 @@ function getData() {
 function saveData(d) { localStorage.setItem(DATA_PREFIX + currentWorkspace, JSON.stringify(d)); }
 
 function getDefaultData(ws) {
-  if (ws === 'deen') {
-  return {
-    projects: [
-      { id: 'P001', company: '中广欧特斯', client: '德国UBA', type: '德国饮用水自我申明', stage: '等样品', owner: '张三', target: '2026-11-16', budget: '42400/批', note: '需确认批次数', files: [], milestones: [
-        { id: 'ms1', title: '模板交接', endDate: '2026-07-10', tasks: [
-          { id: 'ms1t1', role: '迪恩', text: '提供模板', status: 'done', date: '2026-07-10' },
-          { id: 'ms1t2', role: '中广', text: '理解模板', status: 'done', date: '2026-07-10' },
-        ]},
-        { id: 'ms2', title: '申请与样品', startDate: '2026-07-20', endDate: '2026-07-25', tasks: [
-          { id: 'ms2t1', role: '迪恩', text: '走国外申请流程', status: 'done', date: '2026-07-20' },
-          { id: 'ms2t2', role: '中广', text: '提供搪瓷样品', status: 'progress', date: '2026-07-25' },
-          { id: 'ms2t3', role: '迪恩', text: '支付机构费用', status: 'done', date: '2026-07-25' },
-          { id: 'ms2t4', role: '中广', text: '整理相关资料', status: 'todo', date: '2026-07-25' },
-        ]},
-        { id: 'ms3', title: '样品到机构', endDate: '2026-08-05', tasks: [
-          { id: 'ms3t1', role: '迪恩', text: '搪瓷样品到机构+核对资料', status: 'todo', date: '2026-08-05' },
-          { id: 'ms3t2', role: '中广', text: '和迪恩核对资料', status: 'todo', date: '2026-08-05' },
-        ]},
-        { id: 'ms4', title: '测试完成', endDate: '2026-11-05', tasks: [
-          { id: 'ms4t1', role: '迪恩', text: '搪瓷测试完成', status: 'todo', date: '2026-11-05' },
-          { id: 'ms4t2', role: '中广', text: '完成所有资料', status: 'todo', date: '2026-11-05' },
-        ]},
-        { id: 'ms5', title: '自我申明', startDate: '2026-11-06', endDate: '2026-11-16', tasks: [
-          { id: 'ms5t1', role: '迪恩', text: '协助自我申明', status: 'todo', date: '2026-11-16' },
-          { id: 'ms5t2', role: '中广', text: '完成申明', status: 'todo', date: '2026-11-16' },
-        ]},
-      ] },
-      { id: 'P002', company: '中广欧特斯', client: '意大利DM174', type: '意大利饮用水测试', stage: '资料整理', owner: '张三', target: '2026-10-20', budget: '8480/材料', note: '8.15前送样', files: [], milestones: [] },
-      { id: 'P003', company: '中广欧特斯', client: '法国ACS', type: '法国ACS认证', stage: '等证明文件', owner: '李四', target: '2026-11-05', budget: '30000', note: '8.5递交申请', files: [], milestones: [] },
-      { id: 'P004', company: '中广欧特斯', client: '波兰PZH', type: '波兰PZH认证', stage: '资料整理', owner: '李四', target: '2026-10-05', budget: '40000', note: '可用德/意报告转', files: [], milestones: [] },
-      { id: 'P005', company: '中广欧特斯', client: '罗匈注册', type: '罗马尼亚/匈牙利卫生注册', stage: '等账号', owner: '王五', target: '2026-11-05', budget: '15000', note: '需中广营业执照', files: [], milestones: [] },
-      { id: 'P006', company: '中广欧特斯', client: '葡西申明', type: '葡萄牙/西班牙自我申明', stage: '待启动', owner: '王五', target: '2026-11-20', budget: '0', note: '依赖德国项目', files: [], milestones: [] },
-    ],
-    follows: [
-      { id: 1, date: '2026-07-10', projectId: 'P001', milestoneId: 'ms1', done: '迪恩提供模板', block: '无', need: '无', next: '理解模板要求，开始整理资料' },
-      { id: 2, date: '2026-07-15', projectId: 'P001', milestoneId: 'ms2', done: '联系粉厂确认样品', block: '粉厂回复7.15批次不确定', need: '需要粉厂确认具体发货时间', next: '催促粉厂，备选其他批次' },
-      { id: 3, date: '2026-07-20', projectId: 'P001', milestoneId: 'ms2', done: '再次催促粉厂', block: '粉厂未按时发货', need: '需要粉厂立即发货或换批次', next: '明天继续催，必要时找领导协调' },
-      { id: 4, date: '2026-07-21', projectId: 'P002', milestoneId: null, done: '开始整理爆炸图', block: '电加热爆炸图缺少子零件信息', need: '需要电加热供应商提供爆炸图', next: '联系电加热供应商' },
-      { id: 5, date: '2026-07-22', projectId: 'P003', milestoneId: null, done: '发邮件给有机材料供应商要ACS证书', block: '供应商未回复', need: '需要供应商尽快提供ACS证书', next: '明天电话催供应商' },
-      { id: 6, date: '2026-07-23', projectId: 'P001', milestoneId: 'ms2', done: '继续催粉厂，领导介入协调', block: '粉厂承诺7.25发货', need: '等7.25样品到货确认', next: '准备寄样，走申请流程' },
-    ],
-    todos: [
-      { id: 1, projectId: 'P001', title: '提供搪瓷样品（10片+100g粉）', deadline: '2026-07-25', need: '粉厂样品', who: '粉厂', priority: 'P0', status: '进行中', note: '已逾期4天，7.25承诺发货' },
-      { id: 2, projectId: 'P001', title: '支付机构费用（42,400/批）', deadline: '2026-07-25', need: '付款申请单', who: '财务', priority: 'P0', status: '未开始', note: '需确认批次数后付款' },
-      { id: 3, projectId: 'P002', title: '完成资料整理（型号清单+爆炸图+BOM）', deadline: '2026-07-25', need: '电加热爆炸图', who: '电加热供应商', priority: 'P0', status: '进行中', note: '缺电加热子零件爆炸图' },
-      { id: 4, projectId: 'P003', title: '完成资料整理', deadline: '2026-07-25', need: '有机材料ACS证书', who: '有机材料供应商', priority: 'P0', status: '进行中', note: '供应商未回复邮件' },
-      { id: 5, projectId: 'P004', title: '完成资料整理', deadline: '2026-07-25', need: '水道图', who: '工程部', priority: 'P0', status: '未开始', note: '需要工程部提供从进水到出水图' },
-      { id: 6, projectId: 'P005', title: '完成资料整理', deadline: '2026-07-25', need: '当地子公司营业执照', who: '中广法务', priority: 'P0', status: '进行中', note: '法务在准备' },
-      { id: 7, projectId: 'P003', title: '拿到所有证明文件', deadline: '2026-08-01', need: '金属3.1质保书+有机ACS证书+搪瓷成分文件', who: '各供应商', priority: 'P1', status: '进行中', note: '金属质保书已拿到，等有机证书' },
-      { id: 8, projectId: 'P004', title: '拿到所有证明文件', deadline: '2026-08-01', need: '金属3.1/意测试报告+有机ACS/意测试报告+德搪瓷报告', who: '各供应商/实验室', priority: 'P1', status: '未开始', note: '依赖德国和意大利报告' },
-      { id: 9, projectId: 'P001', title: '搪瓷样品到机构+核对资料', deadline: '2026-08-05', need: '样品物流单号', who: '物流公司', priority: 'P1', status: '未开始', note: '等样品发货' },
-      { id: 10, projectId: 'P003', title: '递交ACS申请', deadline: '2026-08-05', need: '完整资料包', who: '迪恩', priority: 'P1', status: '未开始', note: '迪恩协助递交' },
-      { id: 11, projectId: 'P002', title: '样品到实验室', deadline: '2026-08-15', need: '实际零件（面积≥1dm²×≥3个）', who: '中广仓库', priority: 'P1', status: '未开始', note: '需提前准备零件' },
-      { id: 12, projectId: 'P004', title: '回复机构问题', deadline: '2026-09-01', need: '机构反馈意见', who: '迪恩', priority: 'P2', status: '未开始', note: '等机构审核后反馈' },
-      { id: 13, projectId: 'P004', title: '获得PZH证书', deadline: '2026-10-05', need: '证书', who: '波兰机构', priority: 'P2', status: '未开始', note: '普通流程约1-3个月' },
-      { id: 14, projectId: 'P002', title: '测试完成', deadline: '2026-10-15', need: '测试报告', who: '意大利实验室', priority: 'P2', status: '未开始', note: '约2个月测试周期' },
-      { id: 15, projectId: 'P002', title: '完成自我申明', deadline: '2026-10-20', need: '自我申明文件', who: '迪恩协助', priority: 'P2', status: '未开始', note: '测试完成后编写' },
-      { id: 16, projectId: 'P001', title: '搪瓷测试完成', deadline: '2026-11-05', need: '测试报告', who: '德国实验室', priority: 'P2', status: '未开始', note: '约3个月测试周期' },
-      { id: 17, projectId: 'P003', title: '获得ACS证书', deadline: '2026-11-05', need: 'ACS证书', who: '法国机构', priority: 'P2', status: '未开始', note: '递交后约3个月' },
-      { id: 18, projectId: 'P005', title: '获得卫生注册', deadline: '2026-11-05', need: '注册证书', who: '罗/匈机构', priority: 'P2', status: '未开始', note: '约1-3个月' },
-      { id: 19, projectId: 'P001', title: '完成自我申明', deadline: '2026-11-16', need: '自我申明文件', who: '迪恩协助', priority: 'P2', status: '未开始', note: '测试完成后编写' },
-      { id: 20, projectId: 'P006', title: '完成葡/西自我申明', deadline: '2026-11-20', need: '德国全套资料', who: '德国项目完成后', priority: 'P3', status: '未开始', note: '依赖德国项目' },
-    ],
-    plans: []
-  };
-  }
-  // Empty default for new workspaces
   return { projects: [], follows: [], todos: [], plans: [] };
 }
 
@@ -2871,7 +2893,7 @@ function renderFlowBoard() {
   }
   pillsEl.innerHTML = data.projects.map(p => {
     const active = p.id === currentFlowProject ? 'active' : '';
-    return `<div class="flow-pill ${active}" onclick="selectFlowProject('${p.id}')">${p.id} · ${escHtml(p.client || p.company)}</div>`;
+    return `<div class="flow-pill ${active}" onclick="selectFlowProject('${p.id}')">${p.id} · ${escHtml(p.client || p.company)} <span class="flow-pill-del" onclick="event.stopPropagation();deleteProject('${p.id}')" title="删除项目">×</span></div>`;
   }).join('');
 
   const project = data.projects.find(p => p.id === currentFlowProject);
@@ -2969,6 +2991,7 @@ function renderFlowDetail(project, milestoneIdx) {
         <div class="flow-detail-meta">${formatMilestoneDate(m)} · <span class="flow-status-pill ${status}">${FLOW_STATUS_LABELS[status]}</span> · 共 ${tasks.length} 项任务（已完成 ${doneCount}）</div>
       </div>
       <div style="display:flex;gap:6px;">
+        <button class="btn btn-sm btn-ghost" onclick="editMilestone('${project.id}','${m.id}')">编辑节点</button>
         <button class="btn btn-sm btn-ghost" onclick="addFlowTask('${project.id}','${m.id}')">+ 添加任务</button>
         <button class="btn btn-sm btn-danger" onclick="deleteMilestone('${project.id}','${m.id}')">删除节点</button>
       </div>
@@ -3020,25 +3043,68 @@ function toggleFlowTask(projId, msId, taskId) {
 }
 
 // ========== Milestone Editing ==========
+function deleteProject(projId) {
+  if (!confirm('确定删除该项目及其所有流程节点、任务和关联的跟进记录？')) return;
+  data.projects = data.projects.filter(p => p.id !== projId);
+  data.follows = data.follows.filter(f => f.projectId !== projId);
+  data.todos = data.todos.filter(t => t.projectId !== projId);
+  saveData(data);
+  if (currentFlowProject === projId) {
+    currentFlowProject = data.projects.length > 0 ? data.projects[0].id : null;
+    currentFlowMilestone = 0;
+  }
+  renderFlowBoard();
+  renderOverview();
+  showToast('项目已删除');
+}
+
 function addMilestone(projId) {
-  const title = prompt('请输入流程节点名称：', '新节点');
-  if (title === null) return;
-  if (!title.trim()) { showToast('请填写节点名称'); return; }
-  const endDate = prompt('请输入截止日期（YYYY-MM-DD，可留空表示未排期）：', '');
+  document.getElementById('ms-proj-id').value = projId;
+  document.getElementById('ms-title').value = '';
+  document.getElementById('ms-end-date').value = '';
+  document.getElementById('ms-modal-title').textContent = '添加流程节点';
+  openModal('milestoneModal');
+}
+
+function editMilestone(projId, msId) {
+  const project = data.projects.find(p => p.id === projId);
+  if (!project || !project.milestones) return;
+  const ms = project.milestones.find(m => m.id === msId);
+  if (!ms) return;
+  document.getElementById('ms-proj-id').value = projId;
+  document.getElementById('ms-ms-id').value = msId;
+  document.getElementById('ms-title').value = ms.title || '';
+  document.getElementById('ms-end-date').value = ms.endDate || '';
+  document.getElementById('ms-modal-title').textContent = '编辑流程节点';
+  openModal('milestoneModal');
+}
+
+function saveMilestone() {
+  const projId = document.getElementById('ms-proj-id').value;
+  const msId = document.getElementById('ms-ms-id').value;
+  const title = document.getElementById('ms-title').value.trim();
+  if (!title) { showToast('请填写节点名称'); return; }
+  const endDate = document.getElementById('ms-end-date').value;
   const project = data.projects.find(p => p.id === projId);
   if (!project) return;
   if (!project.milestones) project.milestones = [];
-  const newMs = {
-    id: 'ms_' + Date.now(),
-    title: title.trim(),
-    endDate: endDate ? endDate.trim() : '',
-    tasks: []
-  };
-  project.milestones.push(newMs);
+
+  if (msId) {
+    const ms = project.milestones.find(m => m.id === msId);
+    if (ms) { ms.title = title; ms.endDate = endDate; }
+  } else {
+    project.milestones.push({
+      id: 'ms_' + Date.now(),
+      title: title,
+      endDate: endDate,
+      tasks: []
+    });
+    currentFlowMilestone = project.milestones.length - 1;
+  }
   saveData(data);
-  currentFlowMilestone = project.milestones.length - 1;
+  closeModal('milestoneModal');
   renderFlowBoard();
-  showToast('流程节点已添加');
+  showToast(msId ? '节点已更新' : '流程节点已添加');
 }
 
 function deleteMilestone(projId, msId) {
@@ -3057,12 +3123,21 @@ function deleteMilestone(projId, msId) {
 }
 
 function addFlowTask(projId, msId) {
-  const role = prompt('请输入负责角色（如：迪恩 / 中广）：', '迪恩');
-  if (role === null) return;
-  if (!role.trim()) { showToast('请填写负责角色'); return; }
-  const text = prompt('请输入任务内容：', '');
-  if (text === null) return;
-  if (!text.trim()) { showToast('请填写任务内容'); return; }
+  document.getElementById('task-proj-id').value = projId;
+  document.getElementById('task-ms-id').value = msId;
+  document.getElementById('task-role').value = '迪恩';
+  document.getElementById('task-text').value = '';
+  document.getElementById('task-modal-title').textContent = '添加任务';
+  openModal('taskModal');
+}
+
+function saveFlowTask() {
+  const projId = document.getElementById('task-proj-id').value;
+  const msId = document.getElementById('task-ms-id').value;
+  const role = document.getElementById('task-role').value.trim();
+  const text = document.getElementById('task-text').value.trim();
+  if (!role) { showToast('请填写负责角色'); return; }
+  if (!text) { showToast('请填写任务内容'); return; }
   const project = data.projects.find(p => p.id === projId);
   if (!project || !project.milestones) return;
   const ms = project.milestones.find(m => m.id === msId);
@@ -3070,12 +3145,13 @@ function addFlowTask(projId, msId) {
   if (!ms.tasks) ms.tasks = [];
   ms.tasks.push({
     id: 't_' + Date.now(),
-    role: role.trim(),
-    text: text.trim(),
+    role: role,
+    text: text,
     status: 'todo',
     date: ms.endDate || ''
   });
   saveData(data);
+  closeModal('taskModal');
   renderFlowBoard();
   showToast('任务已添加');
 }
@@ -3293,7 +3369,7 @@ function renderFollows() {
       else if (daysAgo > 0) dateLabel = f.date + ' (' + daysAgo + '天前)';
 
       return `<div class="follow-tl-item">
-        <div class="follow-tl-date">${dateLabel} <span onclick="jumpToCalendar('${f.date}')" style="cursor:pointer;color:#2563eb;font-size:12px;margin-left:4px;" title="在日历中查看这天">📅</span></div>
+        <div class="follow-tl-date">${dateLabel} <span onclick="jumpToCalendar('${f.date}')" style="cursor:pointer;color:#2563eb;font-size:12px;margin-left:4px;" title="在日历中查看这天">📅</span> <span onclick="deleteFollow(${f.id})" style="cursor:pointer;color:#dc2626;font-size:12px;float:right;" title="删除记录">🗑</span></div>
         <div class="follow-tl-content">
           <strong>做了什么：</strong>${f.done || '—'}<br>
           ${f.block ? `<strong style="color:#dc2626">阻碍：</strong>${f.block}<br>` : ''}
@@ -3451,6 +3527,11 @@ function deleteTodo(id) {
   if (!confirm('确定删除这条待办？')) return;
   data.todos = data.todos.filter(t => t.id !== id);
   saveData(data); renderTodos(); renderOverview(); showToast('已删除');
+}
+function deleteFollow(id) {
+  if (!confirm('确定删除这条跟进记录？')) return;
+  data.follows = data.follows.filter(f => f.id !== id);
+  saveData(data); renderFollows(); showToast('已删除');
 }
 
 // ========== Quick Actions ==========
