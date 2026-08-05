@@ -2192,14 +2192,7 @@ let currentWorkspace = localStorage.getItem(WS_KEY) || 'deen';
 
 // Migrate old single-workspace data to deen workspace
 (function migrateOldData() {
-  // Force clear old demo data on v3 upgrade
-  const VER_KEY = 'project_tracker_data_version';
-  if (localStorage.getItem(VER_KEY) !== '4') {
-    // Clear all workspace data
-    WORKSPACES.forEach(ws => localStorage.removeItem(DATA_PREFIX + ws.id));
-    localStorage.removeItem('project_tracker_data_v2');
-    localStorage.setItem(VER_KEY, '4');
-  }
+  // NEVER clear user data — only migrate schema forward
   const oldKey = 'project_tracker_data_v2';
   if (localStorage.getItem(oldKey) && !localStorage.getItem(DATA_PREFIX + 'deen')) {
     localStorage.setItem(DATA_PREFIX + 'deen', localStorage.getItem(oldKey));
