@@ -2271,6 +2271,110 @@ saveData(data);
 
 initDB().catch(e => console.log('DB init skipped:', e));
 
+// ========== Seed KTW Projects from Excel Data ==========
+(function seedKTWProjects() {
+  const SEED_VER_KEY = 'ktw_seed_ver_' + currentWorkspace;
+  const SEED_VERSION = 'v2';
+  const oldVer = localStorage.getItem(SEED_VER_KEY);
+
+  // Already seeded with current version → skip
+  if (oldVer === SEED_VERSION) return;
+
+  // Old seed version detected → clear old seed data to re-seed with corrected data
+  if (oldVer && oldVer !== SEED_VERSION) {
+    const seedIds = ['1001','1002','1003','1004','1005'];
+    data.projects = data.projects.filter(p => !seedIds.includes(String(p.id)));
+    data.todos = data.todos.filter(t => !seedIds.includes(String(t.projectId)));
+    data.follows = data.follows.filter(f => !seedIds.includes(String(f.projectId)));
+  }
+
+  // Only seed if no projects exist
+  if (data.projects.length > 0) return;
+
+  const projects = [
+    {
+      id: '1001', company: 'TCL', client: '光芒', type: '德国KTW认证', stage: '对接搪瓷资料', owner: '', target: '', budget: '', note: '搪瓷制造商：光芒。搪瓷粉厂家：福禄。共3批粉片（已收1批，待到2批）。',
+      milestones: [{
+        id: 'ms_1001_1', title: '对接搪瓷资料', endDate: '2026-08-15',
+        tasks: []
+      }]
+    },
+    {
+      id: '1002', company: 'TCL', client: '昊华', type: '德国KTW认证', stage: '对接搪瓷资料', owner: '', target: '', budget: '', note: '搪瓷制造商：昊华。搪瓷粉厂家：金盛。共3批粉片。',
+      milestones: [{
+        id: 'ms_1002_1', title: '对接搪瓷资料', endDate: '2026-08-15',
+        tasks: []
+      }]
+    },
+    {
+      id: '1003', company: '日出东方', client: '格尔曼', type: '德国KTW认证', stage: '对接搪瓷资料', owner: '', target: '', budget: '', note: '搪瓷制造商：格尔曼。搪瓷粉厂家：金盛/江阴硅普。共2批粉片。',
+      milestones: [{
+        id: 'ms_1003_1', title: '对接搪瓷资料', endDate: '2026-08-15',
+        tasks: []
+      }]
+    },
+    {
+      id: '1004', company: '中广欧特斯', client: '', type: '德国KTW认证', stage: '对接搪瓷资料', owner: '', target: '', budget: '', note: '搪瓷粉厂家：金盛3批+福禄3批。共6批粉片。',
+      milestones: [{
+        id: 'ms_1004_1', title: '对接搪瓷资料', endDate: '2026-08-15',
+        tasks: []
+      }]
+    },
+    {
+      id: '1005', company: '奥克斯', client: '', type: '德国KTW认证', stage: '对接搪瓷资料', owner: '', target: '', budget: '', note: '搪瓷粉厂家：金盛。共3批粉片（2批已收，1批粉待到）。等待实验室确认。',
+      milestones: [{
+        id: 'ms_1005_1', title: '对接搪瓷资料', endDate: '2026-08-15',
+        tasks: []
+      }]
+    },
+  ];
+
+  const todos = [];
+  const todoIdBase = Date.now();
+
+  // 1001 TCL-光芒（福禄，1批已收+2批待到）
+  todos.push({ id: 't_' + (todoIdBase+1), projectId: '1001', milestoneId: 'ms_1001_1', role: 'TCL-光芒', title: '福禄 MS519 已收1批粉片，已寄KIWA送检', deadline: '2026-08-10', need: '', who: 'TCL-光芒', priority: 'P2', status: '已完成', note: '已寄KIWA' });
+  todos.push({ id: 't_' + (todoIdBase+2), projectId: '1001', milestoneId: 'ms_1001_1', role: 'TCL-光芒', title: '福禄 第2批 粉待到（8月初），到货后安排送检', deadline: '2026-08-15', need: '2批粉到货', who: 'TCL-光芒', priority: 'P1', status: '未开始', note: '粉预计8月初到货' });
+  todos.push({ id: 't_' + (todoIdBase+3), projectId: '1001', milestoneId: 'ms_1001_1', role: 'TCL-光芒', title: '福禄 第3批 粉待到（8月初），到货后安排送检', deadline: '2026-08-15', need: '2批粉到货', who: 'TCL-光芒', priority: 'P1', status: '未开始', note: '粉预计8月初到货' });
+
+  // 1002 TCL-昊华（金盛，3批已收，2批寄KIWA+1批等85度）
+  todos.push({ id: 't_' + (todoIdBase+4), projectId: '1002', milestoneId: 'ms_1002_1', role: 'TCL-昊华', title: '金盛 RTUAL5002-A 批次A 已收1批，已寄KIWA送检', deadline: '2026-08-10', need: '', who: 'TCL-昊华', priority: 'P2', status: '已完成', note: '批次号: RTU AL5002-A-A' });
+  todos.push({ id: 't_' + (todoIdBase+5), projectId: '1002', milestoneId: 'ms_1002_1', role: 'TCL-昊华', title: '金盛 RTUAL5002-A 批次B 已收1批，已寄KIWA送检', deadline: '2026-08-10', need: '', who: 'TCL-昊华', priority: 'P2', status: '已完成', note: '批次号: RTU AL5002-A-B' });
+  todos.push({ id: 't_' + (todoIdBase+6), projectId: '1002', milestoneId: 'ms_1002_1', role: 'TCL-昊华', title: '金盛 留1批，等85度粉片（8.15前到，8.10催促）', deadline: '2026-08-15', need: '85度搪瓷粉片', who: 'TCL-昊华', priority: 'P1', status: '未开始', note: '10号提醒，8.15前寄到' });
+
+  // 1003 日出东方-格尔曼（金盛+江阴硅普，各1批已收）
+  todos.push({ id: 't_' + (todoIdBase+7), projectId: '1003', milestoneId: 'ms_1003_1', role: '日出东方', title: '金盛 RTUAL5002-A 已收1批，已寄OFI送检', deadline: '2026-08-10', need: '', who: '日出东方', priority: 'P2', status: '已完成', note: '' });
+  todos.push({ id: 't_' + (todoIdBase+8), projectId: '1003', milestoneId: 'ms_1003_1', role: '日出东方', title: '江阴硅普 L-01(A18) 已收1批，送检机构待定', deadline: '2026-08-15', need: '确认送检机构', who: '日出东方', priority: 'P1', status: '未开始', note: '' });
+
+  // 1004 中广欧特斯（金盛3批+福禄3批，3批已寄TUV+3批等待寄KIWA）
+  todos.push({ id: 't_' + (todoIdBase+9), projectId: '1004', milestoneId: 'ms_1004_1', role: '中广欧特斯', title: '金盛 RTUAL5002-A 批次36298 已收1批，已寄TUV送检', deadline: '2026-08-10', need: '', who: '中广欧特斯', priority: 'P2', status: '已完成', note: '' });
+  todos.push({ id: 't_' + (todoIdBase+10), projectId: '1004', milestoneId: 'ms_1004_1', role: '中广欧特斯', title: '金盛 RTUAL5002-A 批次36194 已收1批，已寄TUV送检', deadline: '2026-08-10', need: '', who: '中广欧特斯', priority: 'P2', status: '已完成', note: '' });
+  todos.push({ id: 't_' + (todoIdBase+11), projectId: '1004', milestoneId: 'ms_1004_1', role: '中广欧特斯', title: '金盛 RTUAL5002-A 批次36298 已收1批，等待寄KIWA', deadline: '2026-08-10', need: '', who: '中广欧特斯', priority: 'P1', status: '未开始', note: '等待寄样' });
+  todos.push({ id: 't_' + (todoIdBase+12), projectId: '1004', milestoneId: 'ms_1004_1', role: '中广欧特斯', title: '福禄 MS519 G425122138 已收1批，已寄TUV送检', deadline: '2026-08-10', need: '', who: '中广欧特斯', priority: 'P2', status: '已完成', note: '' });
+  todos.push({ id: 't_' + (todoIdBase+13), projectId: '1004', milestoneId: 'ms_1004_1', role: '中广欧特斯', title: '福禄 MS519 G425082155 已收1批，等待寄KIWA', deadline: '2026-08-10', need: '', who: '中广欧特斯', priority: 'P1', status: '未开始', note: '等待寄样' });
+  todos.push({ id: 't_' + (todoIdBase+14), projectId: '1004', milestoneId: 'ms_1004_1', role: '中广欧特斯', title: '福禄 MS519 G425122138 已收1批，等待寄KIWA', deadline: '2026-08-10', need: '', who: '中广欧特斯', priority: 'P1', status: '未开始', note: '等待寄样' });
+
+  // 1005 奥克斯（金盛，3批，2批已收+1批粉待到，等待实验室确认）
+  todos.push({ id: 't_' + (todoIdBase+15), projectId: '1005', milestoneId: 'ms_1005_1', role: '奥克斯', title: '金盛 RTUAL5002-A 批次1 已收1批，等待实验室确认', deadline: '2026-08-15', need: '确认送检实验室', who: '奥克斯', priority: 'P1', status: '未开始', note: '' });
+  todos.push({ id: 't_' + (todoIdBase+16), projectId: '1005', milestoneId: 'ms_1005_1', role: '奥克斯', title: '金盛 RTUAL5002-A 批次2 已收1批，等待实验室确认', deadline: '2026-08-15', need: '确认送检实验室', who: '奥克斯', priority: 'P1', status: '未开始', note: '' });
+  todos.push({ id: 't_' + (todoIdBase+17), projectId: '1005', milestoneId: 'ms_1005_1', role: '奥克斯', title: '金盛 RTUAL5002-A 批次3 待到1批粉，等待实验室确认', deadline: '2026-08-15', need: '等待粉到货+确认实验室', who: '奥克斯', priority: 'P0', status: '未开始', note: '粉待到，片已收' });
+
+  // Follow-up records
+  const follows = [
+    { id: todoIdBase+100, date: '2026-08-04', projectId: '1001', milestoneId: 'ms_1001_1', done: 'TCL-光芒：福禄MS519已收1批，已寄KIWA送检', block: '2批粉待到', need: '2批粉到货（8月初）', next: '跟踪粉到货情况，到货后安排送检' },
+    { id: todoIdBase+101, date: '2026-08-04', projectId: '1002', milestoneId: 'ms_1002_1', done: 'TCL-昊华：金盛2批已寄KIWA，留1批等85度粉片', block: '85度粉片未到', need: '8.15前85度粉片到货', next: '8.10催促，8.15前寄到' },
+    { id: todoIdBase+102, date: '2026-08-04', projectId: '1003', milestoneId: 'ms_1003_1', done: '日出东方-格尔曼：金盛已寄OFI，江阴硅普送检机构待定', block: '江阴硅普送检机构未定', need: '确认江阴硅普送检机构', next: '联系确认送检机构' },
+    { id: todoIdBase+103, date: '2026-08-04', projectId: '1004', milestoneId: 'ms_1004_1', done: '中广欧特斯：金盛36298+36194已寄TUV，福禄G425122138已寄TUV', block: '3批等待寄KIWA', need: '金盛36298+福禄2批寄KIWA', next: '安排寄KIWA' },
+    { id: todoIdBase+104, date: '2026-08-04', projectId: '1005', milestoneId: 'ms_1005_1', done: '奥克斯：3批金盛粉片，1批粉待到，等待实验室确认', block: '实验室未确认', need: '确认送检实验室+1批粉到货', next: '联系实验室确认' },
+  ];
+
+  data.projects = data.projects.concat(projects);
+  data.todos = data.todos.concat(todos);
+  data.follows = data.follows.concat(follows);
+  saveData(data);
+  localStorage.setItem(SEED_VER_KEY, SEED_VERSION);
+})();
+
 // ========== Workspace Functions ==========
 function toggleWsDropdown(e) {
   if (e) e.stopPropagation();
@@ -2367,7 +2471,7 @@ function renderDashboard() {
         <div class="db-todo-check ${t.status==='进行中'?'doing':''}"></div>
         <div class="db-todo-info">
           <div class="db-todo-title">${escHtml(t.title)}</div>
-          <div class="db-todo-meta">${proj ? escHtml(proj.company + '-' + proj.client) : t.projectId} · <span style="${dc}">${dl !== '' ? (dl < 0 ? '逾期 ' + Math.abs(dl) + ' 天' : '剩余 ' + dl + ' 天') : ''}</span></div>
+          <div class="db-todo-meta">${proj ? escHtml(proj.company + (proj.client ? '-' + proj.client : '')) : t.projectId} · <span style="${dc}">${dl !== '' ? (dl < 0 ? '逾期 ' + Math.abs(dl) + ' 天' : '剩余 ' + dl + ' 天') : ''}</span></div>
         </div>
         <span class="tag tag-${(t.priority||'P2').toLowerCase()}">${t.priority || 'P2'}</span>
       </div>`;
@@ -2383,7 +2487,7 @@ function renderDashboard() {
       const proj = data.projects.find(p => p.id === f.projectId);
       return `<div class="db-follow-row">
         <div class="db-follow-date">${f.date}</div>
-        <div class="db-follow-proj">${proj ? escHtml(proj.company + '-' + proj.client) : f.projectId}</div>
+        <div class="db-follow-proj">${proj ? escHtml(proj.company + (proj.client ? '-' + proj.client : '')) : f.projectId}</div>
         <div class="db-follow-text">${escHtml(f.done || '')}</div>
       </div>`;
     }).join('');
@@ -2398,7 +2502,7 @@ function renderDashboard() {
         if (t.status === '未开始' || t.status === '进行中') {
           missingItems.push({
             projId: p.id,
-            projName: p.company + '-' + p.client,
+            projName: p.company + (p.client ? '-' + p.client : ''),
             msTitle: m.title,
             task: t,
             msStatus: getMilestoneStatus(m),
@@ -2734,7 +2838,7 @@ function renderCalFollows() {
   }
   list.innerHTML = follows.map(f => {
     const proj = data.projects.find(p => p.id === f.projectId);
-    const projName = proj ? proj.company + '-' + proj.client : f.projectId;
+    const projName = proj ? proj.company + (proj.client ? '-' + proj.client : '') : f.projectId;
     return `<div class="cal-follow-item">
       <div class="cal-follow-project">${escHtml(projName)}</div>
       <div class="cal-follow-done">${escHtml(f.done || '—')}</div>
@@ -2954,7 +3058,7 @@ function renderFollowDatePicker() {
       html += `<div style="font-size:11px;color:#6b7280;margin:6px 0 2px;">📝 跟进 (${previewFollows.length})</div>`;
       previewFollows.forEach(f => {
         const proj = data.projects.find(p => p.id === f.projectId);
-        const projName = proj ? proj.company + '-' + proj.client : f.projectId;
+        const projName = proj ? proj.company + (proj.client ? '-' + proj.client : '') : f.projectId;
         html += `<div class="mini-cal-preview-item"><span class="mini-cal-preview-bullet" style="color:#f59e0b">●</span><span><strong>${escHtml(projName)}</strong>：${escHtml(f.done)}</span></div>`;
       });
     }
@@ -2976,7 +3080,7 @@ function pickFollowDate(dateStr) {
 // ========== Populate Selects ==========
 function populateProjectSelect(selectId) {
   const sel = document.getElementById(selectId);
-  sel.innerHTML = data.projects.map(p => `<option value="${p.id}">${p.id} — ${p.company}-${p.client}</option>`).join('');
+  sel.innerHTML = data.projects.map(p => `<option value="${p.id}">${p.id} — ${p.company}${p.client ? '-' + p.client : ''}</option>`).join('');
 }
 function populateFollowMilestones() {
   const sel = document.getElementById('follow-milestone');
@@ -2991,7 +3095,7 @@ function populateFollowMilestones() {
 }
 function populateProjectFilter() {
   const sel = document.getElementById('filter-project');
-  sel.innerHTML = '<option value="">所有项目</option>' + data.projects.map(p => `<option value="${p.id}">${p.company}-${p.client}</option>`).join('');
+  sel.innerHTML = '<option value="">所有项目</option>' + data.projects.map(p => `<option value="${p.id}">${p.company}${p.client ? '-' + p.client : ''}</option>`).join('');
 }
 
 // ========== Flow Board ==========
@@ -3414,7 +3518,7 @@ function renderProjectCard(p) {
   const pending = projTodos.length;
   const files = p.files || [];
   return `<div class="project-card"><div>
-    <div class="project-title">${p.id} — ${p.company}-${p.client}</div>
+    <div class="project-title">${p.id} — ${p.company}${p.client ? '-' + p.client : ''}</div>
     <div class="project-meta">${p.type} | 负责人：${p.owner} | 目标：${p.target || '未设定'}</div>
     <div class="project-desc">
       <span class="tag tag-进行中">${p.stage}</span>
@@ -3550,7 +3654,7 @@ function renderFollows() {
 
   list.innerHTML = Object.keys(groups).map(pid => {
     const proj = data.projects.find(p => p.id === pid);
-    const projName = proj ? proj.company + '-' + proj.client : pid;
+    const projName = proj ? proj.company + (proj.client ? '-' + proj.client : '') : pid;
     const follows = groups[pid].sort((a, b) => new Date(b.date) - new Date(a.date));
     const lastFollow = follows[0];
     const daysSince = Math.round((new Date(todayStr + 'T00:00:00') - new Date(lastFollow.date + 'T00:00:00')) / (1000 * 60 * 60 * 24));
@@ -3628,7 +3732,7 @@ function renderTodos() {
     return `<tr>
       <td>${t.deadline || '—'}</td>
       <td style="${dc}">${dl !== '' ? dl + '天' : '—'}</td>
-      <td>${proj ? proj.company + '-' + proj.client : t.projectId}</td>
+      <td>${proj ? proj.company + (proj.client ? '-' + proj.client : '') : t.projectId}</td>
       <td>${t.title}${t.note ? `<br><span style="font-size:11px;color:var(--muted);">${t.note}</span>` : ''}</td>
       <td><span class="role-tag ${roleTagClass(t.role || '')}">${escHtml(t.role || '—')}</span></td>
       <td><span class="tag tag-${(t.priority||'p2').toLowerCase()}">${t.priority || 'P2'}</span></td>
