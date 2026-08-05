@@ -2274,17 +2274,30 @@ initDB().catch(e => console.log('DB init skipped:', e));
 // ========== Seed KTW Projects from Excel Data ==========
 (function seedKTWProjects() {
   const SEED_VER_KEY = 'ktw_seed_ver_' + currentWorkspace;
-  const SEED_VERSION = 'v3';
+  const SEED_VERSION = 'v4';
   const oldVer = localStorage.getItem(SEED_VER_KEY);
 
   // Already seeded with current version → skip
   if (oldVer === SEED_VERSION) return;
 
-  // Clear old seed data (from any previous version) before re-seeding
+  // Clear ALL old seed data (any previous version) before re-seeding
+  // Match by ID string, handling both numeric and string IDs
   const seedIds = ['1001','1002','1003','1004','1005'];
   data.projects = data.projects.filter(p => !seedIds.includes(String(p.id)));
   data.todos = data.todos.filter(t => !seedIds.includes(String(t.projectId)));
   data.follows = data.follows.filter(f => !seedIds.includes(String(f.projectId)));
+  // Also clear any projects that have type='德国KTW认证' (catches old-format IDs)
+  const ktwProjectIds = new Set();
+  data.projects.forEach(p => {
+    if (p.type === '德国KTW认证' || (p.note && p.note.includes('KTW'))) {
+      ktwProjectIds.add(String(p.id));
+    }
+  });
+  if (ktwProjectIds.size > 0) {
+    data.projects = data.projects.filter(p => !ktwProjectIds.has(String(p.id)));
+    data.todos = data.todos.filter(t => !ktwProjectIds.has(String(t.projectId)));
+    data.follows = data.follows.filter(f => !ktwProjectIds.has(String(f.projectId)));
+  }
 
   const projects = [
     {
@@ -3640,7 +3653,7 @@ function renderFollows() {
   const filterProj = document.getElementById('filter-project').value;
   const filterDate = document.getElementById('filter-date').value;
   let items = [...data.follows].sort((a, b) => new Date(b.date) - new Date(a.date));
-  if (filterProj) items = items.filter(f => f.projectId === filterProj);
+  if (filterProj) items = items.filter(f => String(f.projectId) === String(filterProj));
   if (filterDate) items = items.filter(f => f.date === filterDate);
   const list = document.getElementById('follow-list');
   if (items.length === 0) { list.innerHTML = '<div class="empty">暂无记录</div>'; return; }
