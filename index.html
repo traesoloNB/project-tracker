@@ -3631,6 +3631,10 @@ function toggleFollowGroup(headerEl) {
   const body = headerEl.parentElement.querySelector('.follow-group-body');
   if (body) body.classList.toggle('collapsed');
 }
+function jumpToProject(projId) {
+  showPage('overview');
+  selectFlowProject(projId);
+}
 function renderFollows() {
   populateProjectFilter();
   const filterProj = document.getElementById('filter-project').value;
@@ -3685,7 +3689,7 @@ function renderFollows() {
     return `<div class="follow-group">
       <div class="follow-group-header" onclick="toggleFollowGroup(this)">
         <div>
-          <div class="follow-group-title">${escHtml(projName)}</div>
+          <div class="follow-group-title"><a href="javascript:void(0)" onclick="event.stopPropagation();jumpToProject('${pid}')" style="color:inherit;text-decoration:none;">${escHtml(projName)}</a></div>
           <div class="follow-group-meta">共${follows.length}条记录 · 最近：${lastFollow.date}</div>
         </div>
         <span class="follow-group-badge ${badgeClass}">${badgeText}</span>
