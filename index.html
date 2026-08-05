@@ -1230,6 +1230,25 @@ tr:hover td { background: #f8fafc; }
   background: rgba(255,255,255,0.25);
   color: white;
 }
+.flow-pill-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 12px;
+  line-height: 1;
+  margin-left: 2px;
+  opacity: 0.4;
+  transition: all 0.15s;
+}
+.flow-pill-edit:hover {
+  opacity: 1;
+  color: var(--accent);
+}
+.flow-pill.active .flow-pill-edit:hover {
+  color: white;
+}
 
 .flow-strip {
   display: flex;
@@ -1705,7 +1724,7 @@ tr:hover td { background: #f8fafc; }
   <div id="page-overview" class="page-content" style="display:none">
     <div class="flow-toolbar">
       <div class="flow-project-pills" id="flow-project-pills"></div>
-      <button class="btn btn-primary" onclick="openModal('projectModal')">+ 新建项目</button>
+      <button class="btn btn-primary" onclick="newProject()">+ 新建项目</button>
     </div>
     <div id="flow-board"></div>
     <div id="flow-detail-panel"></div>
@@ -1837,10 +1856,11 @@ tr:hover td { background: #f8fafc; }
 <div class="modal-overlay" id="projectModal">
   <div class="modal">
     <div class="modal-header">
-      <h3>新建项目</h3>
+      <h3 id="project-modal-title">新建项目</h3>
       <button class="modal-close" onclick="closeModal('projectModal')">&times;</button>
     </div>
     <div class="modal-body">
+      <input type="hidden" id="proj-edit-id">
       <div class="form-group">
         <label>所属公司 <span style="color:#dc2626">*</span></label>
         <input type="text" id="proj-company" placeholder="如：中广欧特斯" list="company-suggestions">
@@ -2927,7 +2947,7 @@ function renderFlowBoard() {
   }
   pillsEl.innerHTML = data.projects.map(p => {
     const active = p.id === currentFlowProject ? 'active' : '';
-    return `<div class="flow-pill ${active}" onclick="selectFlowProject('${p.id}')">${p.id} · ${escHtml(p.client || p.company)} <span class="flow-pill-del" onclick="event.stopPropagation();deleteProject('${p.id}')" title="删除项目">×</span></div>`;
+    return `<div class="flow-pill ${active}" onclick="selectFlowProject('${p.id}')">${p.id} · ${escHtml(p.client || p.company)} <span class="flow-pill-edit" onclick="event.stopPropagation();editProject('${p.id}')" title="编辑项目">✎</span><span class="flow-pill-del" onclick="event.stopPropagation();deleteProject('${p.id}')" title="删除项目">×</span></div>`;
   }).join('');
 
   const project = data.projects.find(p => p.id === currentFlowProject);
@@ -3486,20 +3506,71 @@ function clearTodoFilters() {
 function saveProject() {
   const company = document.getElementById('proj-company').value.trim();
   const id = document.getElementById('proj-id').value.trim();
+  const editId = document.getElementById('proj-edit-id').value;
   if (!company) { showToast('请填写所属公司'); return; }
   if (!id) { showToast('请填写项目编号'); return; }
-  if (data.projects.find(p => p.id === id)) { showToast('项目编号已存在'); return; }
-  data.projects.push({
-    id, company, client: document.getElementById('proj-client').value.trim(),
-    type: document.getElementById('proj-type').value.trim(),
-    stage: document.getElementById('proj-stage').value.trim(),
-    owner: document.getElementById('proj-owner').value.trim(),
-    target: document.getElementById('proj-target').value,
-    budget: document.getElementById('proj-budget').value.trim(),
-    note: document.getElementById('proj-note').value.trim(), files: [], milestones: [],
-  });
-  saveData(data); closeModal('projectModal'); renderOverview(); renderFlowBoard(); showToast('项目已创建');
+
+  if (editId) {
+    // Edit mode
+    const project = data.projects.find(p => p.id === editId);
+    if (!project) return;
+    // Check if new ID conflicts with another project
+    if (id !== editId && data.projects.find(p => p.id === id)) { showToast('项目编号已存在'); return; }
+    const oldId = project.id;
+    project.id = id;
+    project.company = company;
+    project.client = document.getElementById('proj-client').value.trim();
+    project.type = document.getElementById('proj-type').value.trim();
+    project.stage = document.getElementById('proj-stage').value.trim();
+    project.owner = document.getElementById('proj-owner').value.trim();
+    project.target = document.getElementById('proj-target').value;
+    project.budget = document.getElementById('proj-budget').value.trim();
+    project.note = document.getElementById('proj-note').value.trim();
+    // Update projectId references in follows and todos
+    if (oldId !== id) {
+      data.follows.forEach(f => { if (f.projectId === oldId) f.projectId = id; });
+      data.todos.forEach(t => { if (t.projectId === oldId) t.projectId = id; });
+      if (currentFlowProject === oldId) currentFlowProject = id;
+    }
+    saveData(data); closeModal('projectModal'); renderOverview(); renderFlowBoard(); showToast('项目已更新');
+  } else {
+    // Create mode
+    if (data.projects.find(p => p.id === id)) { showToast('项目编号已存在'); return; }
+    data.projects.push({
+      id, company, client: document.getElementById('proj-client').value.trim(),
+      type: document.getElementById('proj-type').value.trim(),
+      stage: document.getElementById('proj-stage').value.trim(),
+      owner: document.getElementById('proj-owner').value.trim(),
+      target: document.getElementById('proj-target').value,
+      budget: document.getElementById('proj-budget').value.trim(),
+      note: document.getElementById('proj-note').value.trim(), files: [], milestones: [],
+    });
+    saveData(data); closeModal('projectModal'); renderOverview(); renderFlowBoard(); showToast('项目已创建');
+  }
+  document.getElementById('proj-edit-id').value = '';
   ['proj-company','proj-id','proj-client','proj-type','proj-stage','proj-owner','proj-target','proj-budget','proj-note'].forEach(id => document.getElementById(id).value = '');
+}
+function editProject(projId) {
+  const project = data.projects.find(p => p.id === projId);
+  if (!project) return;
+  document.getElementById('proj-edit-id').value = projId;
+  document.getElementById('proj-company').value = project.company || '';
+  document.getElementById('proj-id').value = project.id || '';
+  document.getElementById('proj-client').value = project.client || '';
+  document.getElementById('proj-type').value = project.type || '';
+  document.getElementById('proj-stage').value = project.stage || '';
+  document.getElementById('proj-owner').value = project.owner || '';
+  document.getElementById('proj-target').value = project.target || '';
+  document.getElementById('proj-budget').value = project.budget || '';
+  document.getElementById('proj-note').value = project.note || '';
+  document.getElementById('project-modal-title').textContent = '编辑项目';
+  openModal('projectModal');
+}
+function newProject() {
+  document.getElementById('proj-edit-id').value = '';
+  ['proj-company','proj-id','proj-client','proj-type','proj-stage','proj-owner','proj-target','proj-budget','proj-note'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('project-modal-title').textContent = '新建项目';
+  openModal('projectModal');
 }
 function saveFollow() {
   const projectId = document.getElementById('follow-project').value;
