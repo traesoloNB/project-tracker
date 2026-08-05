@@ -1708,6 +1708,7 @@ tr:hover td { background: #f8fafc; }
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="header-meta" id="header-date"></div>
+      <button class="btn btn-sm" onclick="restoreAutoBackup()" title="从自动备份恢复数据" style="font-size:12px;padding:4px 10px;">↩ 恢复备份</button>
       <button class="btn btn-sm" onclick="exportData()" title="导出所有数据到文件备份" style="font-size:12px;padding:4px 10px;">📥 导出备份</button>
       <label class="btn btn-sm" title="从备份文件恢复数据" style="font-size:12px;padding:4px 10px;cursor:pointer;margin:0;">📤 导入恢复
         <input type="file" accept=".json" style="display:none;" onchange="importData(event)">
@@ -2205,7 +2206,20 @@ function getData() {
   if (raw) return JSON.parse(raw);
   return getDefaultData(currentWorkspace);
 }
-function saveData(d) { localStorage.setItem(DATA_PREFIX + currentWorkspace, JSON.stringify(d)); }
+function saveData(d) {
+  // Auto-backup: keep last 3 snapshots before overwriting
+  const BACKUP_PREFIX = 'project_tracker_autobak_';
+  const key = DATA_PREFIX + currentWorkspace;
+  const current = localStorage.getItem(key);
+  if (current) {
+    // Shift backups: bak2=bak1, bak1=bak0, bak0=current
+    const bak2 = localStorage.getItem(BACKUP_PREFIX + currentWorkspace + '_2');
+    const bak1 = localStorage.getItem(BACKUP_PREFIX + currentWorkspace + '_1');
+    if (bak1) localStorage.setItem(BACKUP_PREFIX + currentWorkspace + '_2', bak1);
+    if (current) localStorage.setItem(BACKUP_PREFIX + currentWorkspace + '_1', current);
+  }
+  localStorage.setItem(key, JSON.stringify(d));
+}
 
 function getDefaultData(ws) {
   return { projects: [], follows: [], todos: [], plans: [] };
@@ -2549,6 +2563,55 @@ function importData(event) {
   };
   reader.readAsText(file);
   event.target.value = '';
+}
+
+function restoreAutoBackup() {
+  const BACKUP_PREFIX = 'project_tracker_autobak_';
+  const bak1 = localStorage.getItem(BACKUP_PREFIX + currentWorkspace + '_1');
+  const bak2 = localStorage.getItem(BACKUP_PREFIX + currentWorkspace + '_2');
+  if (!bak1 && !bak2) {
+    showToast('没有可用的自动备份');
+    return;
+  }
+  let msg = '找到以下自动备份：\n';
+  if (bak1) {
+    try {
+      const d = JSON.parse(bak1);
+      const pCount = d.projects ? d.projects.length : 0;
+      const tCount = d.todos ? d.todos.length : 0;
+      msg += `备份1：${pCount}个项目，${tCount}条待办\n`;
+    } catch(e) { msg += '备份1：数据损坏\n'; }
+  }
+  if (bak2) {
+    try {
+      const d = JSON.parse(bak2);
+      const pCount = d.projects ? d.projects.length : 0;
+      const tCount = d.todos ? d.todos.length : 0;
+      msg += `备份2：${pCount}个项目，${tCount}条待办\n`;
+    } catch(e) { msg += '备份2：数据损坏\n'; }
+  }
+  msg += '\n输入 1 恢复备份1，输入 2 恢复备份2';
+  const choice = prompt(msg);
+  if (choice !== '1' && choice !== '2') return;
+  const raw = choice === '1' ? bak1 : bak2;
+  if (!raw) { showToast('该备份不存在'); return; }
+  try {
+    const restored = JSON.parse(raw);
+    localStorage.setItem(DATA_PREFIX + currentWorkspace, JSON.stringify(restored));
+    data = restored;
+    if (!data.plans) data.plans = [];
+    data.projects.forEach(p => { if (!p.milestones) p.milestones = []; });
+    data.follows.forEach(f => { if (!f.milestoneId) f.milestoneId = null; });
+    data.todos.forEach(t => { if (!t.milestoneId) t.milestoneId = null; if (!t.role) t.role = t.who || ''; });
+    saveData(data);
+    renderFlowBoard();
+    renderTodos();
+    renderOverview();
+    renderDashboard();
+    showToast('已从自动备份恢复');
+  } catch(err) {
+    showToast('恢复失败：' + err.message);
+  }
 }
 
 // ========== Calendar ==========
