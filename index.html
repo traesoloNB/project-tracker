@@ -1835,7 +1835,7 @@ tr:hover td { background: #f8fafc; }
               <th>剩余天数</th>
               <th>项目</th>
               <th>待办事项</th>
-              <th>需要什么</th>
+              <th>角色</th>
               <th>优先级</th>
               <th>状态</th>
               <th>操作</th>
@@ -1976,8 +1976,8 @@ tr:hover td { background: #f8fafc; }
         <textarea id="todo-need" placeholder="如：粉厂样品10片+100g粉"></textarea>
       </div>
       <div class="form-group">
-        <label>找谁要</label>
-        <input type="text" id="todo-who" placeholder="如：粉厂">
+        <label>负责角色</label>
+        <input type="text" id="todo-who" placeholder="如：迪恩、中广、粉厂" list="role-suggestions">
       </div>
       <div class="form-group">
         <label>优先级</label>
@@ -2078,7 +2078,7 @@ tr:hover td { background: #f8fafc; }
 
 <!-- Task Modal -->
 <div class="modal-overlay" id="taskModal">
-  <div class="modal" style="max-width:480px;">
+  <div class="modal" style="max-width:520px;">
     <div class="modal-header">
       <h3 id="task-modal-title">添加任务</h3>
       <button class="modal-close" onclick="closeModal('taskModal')">&times;</button>
@@ -2099,6 +2099,29 @@ tr:hover td { background: #f8fafc; }
       <div class="form-group">
         <label>任务内容 <span style="color:#dc2626">*</span></label>
         <textarea id="task-text" placeholder="如：提供搪瓷样品、走国外申请流程..." rows="3"></textarea>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <div class="form-group" style="flex:1;">
+          <label>截止日期</label>
+          <input type="date" id="task-deadline">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>优先级</label>
+          <select id="task-priority">
+            <option value="P0">P0 — 最高（立即处理）</option>
+            <option value="P1">P1 — 高（14天内）</option>
+            <option value="P2" selected>P2 — 中（正常推进）</option>
+            <option value="P3">P3 — 低（时间充裕）</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>需要什么资料</label>
+        <input type="text" id="task-need" placeholder="如：粉厂样品10片+100g粉">
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <input type="text" id="task-note" placeholder="其他备注...">
       </div>
     </div>
     <div class="modal-footer">
@@ -2171,11 +2194,11 @@ let currentWorkspace = localStorage.getItem(WS_KEY) || 'deen';
 (function migrateOldData() {
   // Force clear old demo data on v3 upgrade
   const VER_KEY = 'project_tracker_data_version';
-  if (localStorage.getItem(VER_KEY) !== '3') {
+  if (localStorage.getItem(VER_KEY) !== '4') {
     // Clear all workspace data
     WORKSPACES.forEach(ws => localStorage.removeItem(DATA_PREFIX + ws.id));
     localStorage.removeItem('project_tracker_data_v2');
-    localStorage.setItem(VER_KEY, '3');
+    localStorage.setItem(VER_KEY, '4');
   }
   const oldKey = 'project_tracker_data_v2';
   if (localStorage.getItem(oldKey) && !localStorage.getItem(DATA_PREFIX + 'deen')) {
@@ -2204,6 +2227,38 @@ data.projects.forEach(p => {
 });
 data.follows.forEach(f => {
   if (!f.milestoneId) f.milestoneId = null;
+});
+// Migrate milestone.tasks to unified todos
+data.projects.forEach(p => {
+  if (!p.milestones) return;
+  p.milestones.forEach(ms => {
+    if (ms.tasks && ms.tasks.length > 0) {
+      ms.tasks.forEach(t => {
+        // Skip if already migrated
+        if (data.todos.find(existing => existing.id === t.id || (existing.title === t.text && existing.milestoneId === ms.id && existing.projectId === p.id))) return;
+        const statusMap = { 'todo': '未开始', 'progress': '进行中', 'done': '已完成' };
+        data.todos.push({
+          id: t.id.startsWith('t_') ? t.id : 't_' + t.id,
+          projectId: p.id,
+          milestoneId: ms.id,
+          role: t.role || '',
+          title: t.text || '',
+          deadline: t.date || ms.endDate || '',
+          need: '',
+          who: t.role || '',
+          priority: 'P2',
+          status: statusMap[t.status] || '未开始',
+          note: ''
+        });
+      });
+      ms.tasks = []; // Clear old tasks
+    }
+  });
+});
+// Ensure all todos have milestoneId and role
+data.todos.forEach(t => {
+  if (!t.milestoneId) t.milestoneId = null;
+  if (!t.role) t.role = t.who || '';
 });
 saveData(data);
 
@@ -2307,7 +2362,7 @@ function renderDashboard() {
           <div class="db-todo-title">${escHtml(t.title)}</div>
           <div class="db-todo-meta">${proj ? escHtml(proj.company + '-' + proj.client) : t.projectId} · <span style="${dc}">${dl !== '' ? (dl < 0 ? '逾期 ' + Math.abs(dl) + ' 天' : '剩余 ' + dl + ' 天') : ''}</span></div>
         </div>
-        <span class="tag tag-${t.priority.toLowerCase()}">${t.priority}</span>
+        <span class="tag tag-${(t.priority||'P2').toLowerCase()}">${t.priority || 'P2'}</span>
       </div>`;
     }).join('');
   }
@@ -2327,19 +2382,20 @@ function renderDashboard() {
     }).join('');
   }
 
-  // Missing / in-progress items from milestones
+  // Missing / in-progress items from todos linked to milestones
   const missingItems = [];
   data.projects.forEach(p => {
     (p.milestones || []).forEach(m => {
-      (m.tasks || []).forEach(t => {
-        if (t.status === 'todo' || t.status === 'progress') {
+      const msTodos = getMilestoneTodos(m.id);
+      msTodos.forEach(t => {
+        if (t.status === '未开始' || t.status === '进行中') {
           missingItems.push({
             projId: p.id,
             projName: p.company + '-' + p.client,
             msTitle: m.title,
             task: t,
             msStatus: getMilestoneStatus(m),
-            dueDate: m.endDate || ''
+            dueDate: t.deadline || m.endDate || ''
           });
         }
       });
@@ -2362,10 +2418,10 @@ function renderDashboard() {
       const dateClass = (it.msStatus === 'done') ? 'gray' : it.msStatus;
       return `<div class="missing-item-row">
         <div class="missing-item-info">
-          <div class="missing-item-title">${escHtml(it.task.text)}</div>
+          <div class="missing-item-title">${escHtml(it.task.title)}</div>
           <div class="missing-item-meta">${escHtml(it.projName)} · ${escHtml(it.msTitle)}</div>
         </div>
-        <span class="role-tag ${roleTagClass(it.task.role)}">${escHtml(it.task.role)}</span>
+        <span class="role-tag ${roleTagClass(it.task.role || '')}">${escHtml(it.task.role || '—')}</span>
         <span class="missing-item-date ${dateClass}">${dateLabel}</span>
       </div>`;
     }).join('');
@@ -2902,8 +2958,8 @@ const FLOW_STATUS_LABELS = {
 };
 
 function getMilestoneStatus(milestone) {
-  const tasks = milestone.tasks || [];
-  if (tasks.length > 0 && tasks.every(t => t.status === 'done')) {
+  const tasks = getMilestoneTodos(milestone.id);
+  if (tasks.length > 0 && tasks.every(t => t.status === '已完成')) {
     return 'done';
   }
   const endDate = milestone.endDate;
@@ -2915,6 +2971,18 @@ function getMilestoneStatus(milestone) {
   if (diffDays <= 7) return 'red';
   if (diffDays <= 14) return 'orange';
   return 'yellow';
+}
+
+// Get todos for a specific milestone
+function getMilestoneTodos(msId) {
+  return data.todos.filter(t => t.milestoneId === msId);
+}
+
+// Map todo status to flow task status class
+function todoStatusToFlow(status) {
+  if (status === '已完成') return 'done';
+  if (status === '进行中') return 'progress';
+  return 'todo';
 }
 
 function roleTagClass(role) {
@@ -2973,10 +3041,11 @@ function renderFlowStrip(project) {
     const color = FLOW_STATUS_COLORS[status];
     const active = idx === currentFlowMilestone ? 'active' : '';
     const dateText = formatMilestoneDate(m);
-    const tasks = m.tasks || [];
-    const doneCount = tasks.filter(t => t.status === 'done').length;
+    const tasks = getMilestoneTodos(m.id);
+    const doneCount = tasks.filter(t => t.status === '已完成').length;
     const taskPreview = tasks.slice(0, 4).map(t => {
-      return `<div class="flow-expand-task"><span class="flow-task-dot ${t.status}"></span><span class="role-tag ${roleTagClass(t.role)}">${escHtml(t.role)}</span><span>${escHtml(t.text)}</span></div>`;
+      const flowStatus = todoStatusToFlow(t.status);
+      return `<div class="flow-expand-task"><span class="flow-task-dot ${flowStatus}"></span><span class="role-tag ${roleTagClass(t.role)}">${escHtml(t.role)}</span><span>${escHtml(t.title)}</span></div>`;
     }).join('');
     const moreText = tasks.length > 4 ? `<div class="flow-expand-task" style="color:var(--muted);">还有 ${tasks.length - 4} 项...</div>` : '';
     html += `<div class="flow-card status-${status} ${active}" onclick="selectFlowMilestone(${idx})">
@@ -3010,8 +3079,8 @@ function renderFlowDetail(project, milestoneIdx) {
   if (milestoneIdx < 0 || milestoneIdx >= milestones.length) milestoneIdx = 0;
   const m = milestones[milestoneIdx];
   const status = getMilestoneStatus(m);
-  const tasks = m.tasks || [];
-  const doneCount = tasks.filter(t => t.status === 'done').length;
+  const tasks = getMilestoneTodos(m.id);
+  const doneCount = tasks.filter(t => t.status === '已完成').length;
   // Follow-ups synced from daily follow-ups for this milestone
   const follows = data.follows
     .filter(f => f.projectId === project.id && f.milestoneId === m.id)
@@ -3020,11 +3089,13 @@ function renderFlowDetail(project, milestoneIdx) {
   const tasksHtml = tasks.length === 0
     ? '<div class="empty">该节点暂无任务，点击下方添加</div>'
     : tasks.map(t => {
-        const toggleLabel = t.status === 'done' ? '已完成' : t.status === 'progress' ? '进行中' : '未开始';
-        return `<div class="flow-task-row ${t.status === 'done' ? 'done' : ''}">
-          <button class="flow-task-toggle ${t.status}" onclick="toggleFlowTask('${project.id}','${m.id}','${t.id}')" title="点击切换状态">${toggleLabel}</button>
-          <span class="role-tag ${roleTagClass(t.role)}">${escHtml(t.role)}</span>
-          <span class="flow-task-text">${escHtml(t.text)}${t.date ? ` <span style="color:var(--muted);font-size:11px;">(${t.date})</span>` : ''}</span>
+        const flowStatus = todoStatusToFlow(t.status);
+        const toggleLabel = t.status === '已完成' ? '已完成' : t.status === '进行中' ? '进行中' : '未开始';
+        const priorityTag = t.priority ? `<span class="tag tag-${(t.priority||'').toLowerCase()}" style="font-size:10px;padding:1px 5px;margin-left:4px;">${t.priority}</span>` : '';
+        return `<div class="flow-task-row ${flowStatus === 'done' ? 'done' : ''}">
+          <button class="flow-task-toggle ${flowStatus}" onclick="toggleFlowTask('${project.id}','${m.id}','${t.id}')" title="点击切换状态">${toggleLabel}</button>
+          <span class="role-tag ${roleTagClass(t.role)}">${escHtml(t.role || '—')}</span>
+          <span class="flow-task-text">${escHtml(t.title)}${t.deadline ? ` <span style="color:var(--muted);font-size:11px;">(${t.deadline})</span>` : ''}${priorityTag}</span>
           <button class="flow-task-delete" onclick="deleteFlowTask('${project.id}','${m.id}','${t.id}')" title="删除任务">×</button>
         </div>`;
       }).join('');
@@ -3082,18 +3153,15 @@ function selectFlowMilestone(idx) {
 }
 
 function toggleFlowTask(projId, msId, taskId) {
-  const project = data.projects.find(p => p.id === projId);
-  if (!project || !project.milestones) return;
-  const ms = project.milestones.find(m => m.id === msId);
-  if (!ms || !ms.tasks) return;
-  const task = ms.tasks.find(t => t.id === taskId);
-  if (!task) return;
-  // Cycle: todo → progress → done → todo
-  if (task.status === 'todo') task.status = 'progress';
-  else if (task.status === 'progress') task.status = 'done';
-  else task.status = 'todo';
+  const todo = data.todos.find(t => t.id === taskId && t.milestoneId === msId);
+  if (!todo) return;
+  // Cycle: 未开始 → 进行中 → 已完成 → 未开始
+  if (todo.status === '未开始') todo.status = '进行中';
+  else if (todo.status === '进行中') todo.status = '已完成';
+  else todo.status = '未开始';
   saveData(data);
   renderFlowBoard();
+  renderTodos();
 }
 
 // ========== Milestone Editing ==========
@@ -3162,17 +3230,21 @@ function saveMilestone() {
 }
 
 function deleteMilestone(projId, msId) {
-  if (!confirm('确定删除这个流程节点及其所有任务？关联的跟进记录将解除关联。')) return;
+  if (!confirm('确定删除这个流程节点？关联的任务和跟进记录将解除关联。')) return;
   const project = data.projects.find(p => p.id === projId);
   if (!project || !project.milestones) return;
   project.milestones = project.milestones.filter(m => m.id !== msId);
   // Clear milestoneId on related follows
   data.follows.forEach(f => { if (f.milestoneId === msId && f.projectId === projId) f.milestoneId = null; });
+  // Unlink todos from this milestone (don't delete, just unlink)
+  data.todos.forEach(t => { if (t.milestoneId === msId) t.milestoneId = null; });
   saveData(data);
   if (currentFlowMilestone >= project.milestones.length) {
     currentFlowMilestone = Math.max(0, project.milestones.length - 1);
   }
   renderFlowBoard();
+  renderTodos();
+  renderOverview();
   showToast('流程节点已删除');
 }
 
@@ -3181,7 +3253,17 @@ function addFlowTask(projId, msId) {
   document.getElementById('task-ms-id').value = msId;
   document.getElementById('task-role').value = '迪恩';
   document.getElementById('task-text').value = '';
+  document.getElementById('task-deadline').value = '';
+  document.getElementById('task-priority').value = 'P2';
+  document.getElementById('task-need').value = '';
+  document.getElementById('task-note').value = '';
   document.getElementById('task-modal-title').textContent = '添加任务';
+  // Pre-fill deadline with milestone end date
+  const project = data.projects.find(p => p.id === projId);
+  if (project && project.milestones) {
+    const ms = project.milestones.find(m => m.id === msId);
+    if (ms && ms.endDate) document.getElementById('task-deadline').value = ms.endDate;
+  }
   openModal('taskModal');
 }
 
@@ -3192,33 +3274,41 @@ function saveFlowTask() {
   const text = document.getElementById('task-text').value.trim();
   if (!role) { showToast('请填写负责角色'); return; }
   if (!text) { showToast('请填写任务内容'); return; }
+  const deadline = document.getElementById('task-deadline').value;
+  const priority = document.getElementById('task-priority').value;
+  const need = document.getElementById('task-need').value.trim();
+  const note = document.getElementById('task-note').value.trim();
   const project = data.projects.find(p => p.id === projId);
-  if (!project || !project.milestones) return;
-  const ms = project.milestones.find(m => m.id === msId);
-  if (!ms) return;
-  if (!ms.tasks) ms.tasks = [];
-  ms.tasks.push({
+  if (!project) return;
+  const ms = project.milestones ? project.milestones.find(m => m.id === msId) : null;
+  data.todos.push({
     id: 't_' + Date.now(),
+    projectId: projId,
+    milestoneId: msId,
     role: role,
-    text: text,
-    status: 'todo',
-    date: ms.endDate || ''
+    title: text,
+    deadline: deadline || (ms ? ms.endDate : '') || '',
+    need: need,
+    who: role,
+    priority: priority,
+    status: '未开始',
+    note: note
   });
   saveData(data);
   closeModal('taskModal');
   renderFlowBoard();
+  renderTodos();
+  renderOverview();
   showToast('任务已添加');
 }
 
 function deleteFlowTask(projId, msId, taskId) {
   if (!confirm('确定删除这个任务？')) return;
-  const project = data.projects.find(p => p.id === projId);
-  if (!project || !project.milestones) return;
-  const ms = project.milestones.find(m => m.id === msId);
-  if (!ms || !ms.tasks) return;
-  ms.tasks = ms.tasks.filter(t => t.id !== taskId);
+  data.todos = data.todos.filter(t => t.id !== taskId);
   saveData(data);
   renderFlowBoard();
+  renderTodos();
+  renderOverview();
   showToast('任务已删除');
 }
 
@@ -3483,16 +3573,16 @@ function renderTodos() {
       <td>${t.deadline || '—'}</td>
       <td style="${dc}">${dl !== '' ? dl + '天' : '—'}</td>
       <td>${proj ? proj.company + '-' + proj.client : t.projectId}</td>
-      <td>${t.title}</td>
-      <td>${t.need || '—'}</td>
-      <td><span class="tag tag-${t.priority.toLowerCase()}">${t.priority}</span></td>
-      <td><select onchange="updateTodoStatus(${t.id}, this.value)" style="font-size:12px;padding:4px;border-radius:4px;border:1px solid #e5e7eb;">
+      <td>${t.title}${t.note ? `<br><span style="font-size:11px;color:var(--muted);">${t.note}</span>` : ''}</td>
+      <td><span class="role-tag ${roleTagClass(t.role || '')}">${escHtml(t.role || '—')}</span></td>
+      <td><span class="tag tag-${(t.priority||'p2').toLowerCase()}">${t.priority || 'P2'}</span></td>
+      <td><select onchange="updateTodoStatus('${t.id}', this.value)" style="font-size:12px;padding:4px;border-radius:4px;border:1px solid #e5e7eb;">
         <option value="未开始" ${t.status==='未开始'?'selected':''}>未开始</option>
         <option value="进行中" ${t.status==='进行中'?'selected':''}>进行中</option>
         <option value="已完成" ${t.status==='已完成'?'selected':''}>已完成</option>
         <option value="已取消" ${t.status==='已取消'?'selected':''}>已取消</option>
       </select></td>
-      <td><button class="btn btn-sm btn-danger" onclick="deleteTodo(${t.id})">删除</button></td>
+      <td><button class="btn btn-sm btn-danger" onclick="deleteTodo('${t.id}')">删除</button></td>
     </tr>`;
   }).join('');
 }
@@ -3609,15 +3699,18 @@ function saveTodo() {
   const title = document.getElementById('todo-title').value.trim();
   const deadline = document.getElementById('todo-deadline').value;
   if (!title) { showToast('请填写待办事项'); return; }
+  const who = document.getElementById('todo-who').value.trim();
   data.todos.push({
-    id: Date.now(), projectId, title, deadline,
+    id: 't_' + Date.now(), projectId, title, deadline,
+    milestoneId: null,
+    role: who || '',
     need: document.getElementById('todo-need').value.trim(),
-    who: document.getElementById('todo-who').value.trim(),
+    who: who,
     priority: document.getElementById('todo-priority').value,
     status: '未开始',
     note: document.getElementById('todo-note').value.trim(),
   });
-  saveData(data); closeModal('todoModal'); renderTodos(); renderOverview(); showToast('待办已添加');
+  saveData(data); closeModal('todoModal'); renderTodos(); renderOverview(); renderFlowBoard(); showToast('待办已添加');
   document.getElementById('todo-title').value = '';
   document.getElementById('todo-deadline').value = '';
   document.getElementById('todo-need').value = '';
@@ -3625,13 +3718,13 @@ function saveTodo() {
   document.getElementById('todo-note').value = '';
 }
 function updateTodoStatus(id, status) {
-  const todo = data.todos.find(t => t.id === id);
-  if (todo) { todo.status = status; saveData(data); renderTodos(); renderOverview(); if (status === '已完成') showToast('已完成！'); }
+  const todo = data.todos.find(t => String(t.id) === String(id));
+  if (todo) { todo.status = status; saveData(data); renderTodos(); renderOverview(); renderFlowBoard(); if (status === '已完成') showToast('已完成！'); }
 }
 function deleteTodo(id) {
   if (!confirm('确定删除这条待办？')) return;
-  data.todos = data.todos.filter(t => t.id !== id);
-  saveData(data); renderTodos(); renderOverview(); showToast('已删除');
+  data.todos = data.todos.filter(t => String(t.id) !== String(id));
+  saveData(data); renderTodos(); renderOverview(); renderFlowBoard(); showToast('已删除');
 }
 function deleteFollow(id) {
   if (!confirm('确定删除这条跟进记录？')) return;
