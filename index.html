@@ -636,6 +636,77 @@ tr:hover td { background: #f8fafc; }
 }
 .follow-tl-content { font-size: 13px; color: var(--ink); line-height: 1.7; }
 
+/* Daily Follow Page Layout */
+.daily-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+.daily-main { min-width: 0; }
+.daily-sidebar { position: sticky; top: 20px; }
+.follow-cal-card {
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--rule);
+  padding: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.follow-cal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.follow-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.follow-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.follow-cal-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s;
+  color: var(--ink);
+}
+.follow-cal-cell:hover { background: #eff6ff; }
+.follow-cal-cell.other-month { color: #cbd5e1; cursor: default; }
+.follow-cal-cell.other-month:hover { background: transparent; }
+.follow-cal-cell.today { background: #fef2f2; font-weight: 700; color: #dc2626; }
+.follow-cal-cell.has-follow::after {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #f59e0b;
+  position: absolute;
+  bottom: 3px;
+}
+.follow-cal-cell.today.has-follow::after { background: #dc2626; }
+.follow-cal-legend {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.follow-cal-legend span { display: flex; align-items: center; gap: 4px; }
+.follow-cal-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+
 /* Empty state */
 .empty {
   padding: 30px;
@@ -1789,19 +1860,36 @@ tr:hover td { background: #f8fafc; }
 
   <!-- Daily Page -->
   <div id="page-daily" class="page-content" style="display:none">
-    <div class="section">
-      <div class="section-header">
-        <h2>每日跟进记录</h2>
-        <button class="btn btn-success" onclick="openModal('followModal')">+ 新增记录</button>
+    <div class="daily-layout">
+      <div class="daily-main">
+        <div class="section-header">
+          <h2>每日跟进记录</h2>
+          <button class="btn btn-success" onclick="openFollowModalForCurrent()">+ 新增记录</button>
+        </div>
+        <div class="filters">
+          <select id="filter-project" onchange="onFollowProjectChange()"></select>
+          <input type="date" id="filter-date" onchange="renderFollows()">
+          <button class="btn btn-sm" onclick="clearFollowFilters()">清除筛选</button>
+        </div>
+        <div id="follow-list"></div>
       </div>
-      <div class="filters">
-        <select id="filter-project" onchange="renderFollows()">
-          <option value="">所有项目</option>
-        </select>
-        <input type="date" id="filter-date" onchange="renderFollows()">
-        <button class="btn btn-sm" onclick="clearFollowFilters()">清除筛选</button>
+      <div class="daily-sidebar">
+        <div class="follow-cal-card">
+          <div class="follow-cal-header">
+            <button class="btn btn-sm" onclick="prevFollowCalMonth()">‹</button>
+            <span id="follow-cal-title" style="flex:1;text-align:center;font-size:14px;font-weight:700;"></span>
+            <button class="btn btn-sm" onclick="nextFollowCalMonth()">›</button>
+          </div>
+          <div class="follow-cal-weekdays">
+            <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+          </div>
+          <div class="follow-cal-grid" id="follow-cal-grid"></div>
+          <div class="follow-cal-legend">
+            <span><div class="follow-cal-dot" style="background:#f59e0b"></div>有跟进</span>
+            <span><div class="follow-cal-dot" style="background:#dc2626"></div>今天</span>
+          </div>
+        </div>
       </div>
-      <div id="follow-list"></div>
     </div>
   </div>
 
@@ -2451,7 +2539,11 @@ function showPage(page) {
   if (page === 'dashboard') renderDashboard();
   if (page === 'overview') renderFlowBoard();
   if (page === 'calendar') { renderCalendar(); selectToday(); }
-  if (page === 'daily') renderFollows();
+  if (page === 'daily') {
+    if (!followCalYear) { const now = new Date(); followCalYear = now.getFullYear(); followCalMonth = now.getMonth(); }
+    renderFollows();
+    renderFollowCalendar();
+  }
   if (page === 'todos') renderTodos();
 }
 function renderDashboard() {
@@ -3640,6 +3732,8 @@ async function deleteFile(projectId, fileId) {
 }
 
 // ========== Render Follows ==========
+let followCalYear, followCalMonth;
+
 function toggleFollowGroup(headerEl) {
   const body = headerEl.parentElement.querySelector('.follow-group-body');
   if (body) body.classList.toggle('collapsed');
@@ -3647,6 +3741,74 @@ function toggleFollowGroup(headerEl) {
 function jumpToProject(projId) {
   showPage('overview');
   selectFlowProject(projId);
+}
+function onFollowProjectChange() {
+  renderFollows();
+  renderFollowCalendar();
+}
+function openFollowModalForCurrent() {
+  const projId = document.getElementById('filter-project').value;
+  openModal('followModal');
+  if (projId) {
+    document.getElementById('follow-project').value = projId;
+    populateFollowMilestones();
+  }
+}
+function prevFollowCalMonth() {
+  followCalMonth--;
+  if (followCalMonth < 0) { followCalMonth = 11; followCalYear--; }
+  renderFollowCalendar();
+}
+function nextFollowCalMonth() {
+  followCalMonth++;
+  if (followCalMonth > 11) { followCalMonth = 0; followCalYear++; }
+  renderFollowCalendar();
+}
+function renderFollowCalendar() {
+  const title = document.getElementById('follow-cal-title');
+  const grid = document.getElementById('follow-cal-grid');
+  if (!title || !grid) return;
+
+  const filterProj = document.getElementById('filter-project') ? document.getElementById('filter-project').value : '';
+  title.textContent = followCalYear + '年' + (followCalMonth + 1) + '月';
+
+  // Get follow dates for this project
+  let projFollows = data.follows;
+  if (filterProj) projFollows = projFollows.filter(f => String(f.projectId) === String(filterProj));
+  const followDates = new Set(projFollows.map(f => f.date));
+
+  const today = new Date();
+  const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
+  const firstDay = new Date(followCalYear, followCalMonth, 1).getDay();
+  const daysInMonth = new Date(followCalYear, followCalMonth + 1, 0).getDate();
+  const prevMonthDays = new Date(followCalYear, followCalMonth, 0).getDate();
+
+  let html = '';
+  // Previous month padding
+  for (let i = firstDay - 1; i >= 0; i--) {
+    html += `<div class="follow-cal-cell other-month">${prevMonthDays - i}</div>`;
+  }
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = formatDateStr(followCalYear, followCalMonth, d);
+    const isToday = dateStr === todayStr;
+    const hasFollow = followDates.has(dateStr);
+    let cls = 'follow-cal-cell';
+    if (isToday) cls += ' today';
+    if (hasFollow) cls += ' has-follow';
+    html += `<div class="${cls}" onclick="setFollowDateFilter('${dateStr}')">${d}</div>`;
+  }
+  // Next month padding
+  const totalCells = firstDay + daysInMonth;
+  const remaining = (7 - totalCells % 7) % 7;
+  for (let d = 1; d <= remaining; d++) {
+    html += `<div class="follow-cal-cell other-month">${d}</div>`;
+  }
+  grid.innerHTML = html;
+}
+function setFollowDateFilter(dateStr) {
+  document.getElementById('filter-date').value = dateStr;
+  renderFollows();
 }
 function renderFollows() {
   populateProjectFilter();
@@ -3656,7 +3818,10 @@ function renderFollows() {
   if (filterProj) items = items.filter(f => String(f.projectId) === String(filterProj));
   if (filterDate) items = items.filter(f => f.date === filterDate);
   const list = document.getElementById('follow-list');
-  if (items.length === 0) { list.innerHTML = '<div class="empty">暂无记录</div>'; return; }
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty">暂无记录<br><span style="font-size:12px;color:var(--muted);">选择项目后点击「+ 新增记录」添加跟进</span></div>';
+    return;
+  }
 
   // Group by project
   const groups = {};
@@ -3669,7 +3834,7 @@ function renderFollows() {
   const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
 
   list.innerHTML = Object.keys(groups).map(pid => {
-    const proj = data.projects.find(p => p.id === pid);
+    const proj = data.projects.find(p => String(p.id) === String(pid));
     const projName = proj ? proj.company + (proj.client ? '-' + proj.client : '') : pid;
     const follows = groups[pid].sort((a, b) => new Date(b.date) - new Date(a.date));
     const lastFollow = follows[0];
@@ -3717,6 +3882,7 @@ function clearFollowFilters() {
   document.getElementById('filter-project').value = '';
   document.getElementById('filter-date').value = '';
   renderFollows();
+  renderFollowCalendar();
 }
 function jumpToCalendar(dateStr) {
   const parts = dateStr.split('-');
