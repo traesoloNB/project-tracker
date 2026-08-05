@@ -1477,6 +1477,40 @@ tr:hover td { background: #f8fafc; }
   display: flex;
   gap: 8px;
 }
+.flow-card-add {
+  flex: 0 0 80px !important;
+  min-width: 80px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--rule);
+  background: var(--bg);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.flow-card-add:hover {
+  border-color: var(--accent);
+  background: #eff6ff;
+  box-shadow: 0 4px 12px rgba(37,99,235,0.1);
+}
+.flow-card-add:hover .flow-add-icon {
+  color: var(--accent);
+  transform: scale(1.15);
+}
+.flow-add-icon {
+  font-size: 32px;
+  color: var(--muted);
+  line-height: 1;
+  margin-bottom: 6px;
+  transition: all 0.2s;
+}
+.flow-add-label {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+}
 
 /* Status-tinted card backgrounds */
 .flow-card.status-done { background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 30%); }
@@ -2942,10 +2976,10 @@ function renderFlowStrip(project) {
       </div>
     </div>`;
   });
-  html += `</div>
-  <div class="flow-add-row">
-    <button class="btn btn-sm btn-ghost" onclick="addMilestone('${project.id}')">+ 添加流程节点</button>
-  </div>`;
+  html += `<div class="flow-card flow-card-add" onclick="addMilestone('${project.id}')">
+    <div class="flow-add-icon">+</div>
+    <div class="flow-add-label">添加流程节点</div>
+  </div></div>`;
   board.innerHTML = html;
 }
 
