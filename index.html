@@ -707,6 +707,197 @@ tr:hover td { background: #f8fafc; }
 .follow-cal-legend span { display: flex; align-items: center; gap: 4px; }
 .follow-cal-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
 
+/* Project Detail View (daily page when a project is selected) */
+.pd-overview {
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--rule);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.pd-overview-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.pd-overview-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.pd-overview-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.pd-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.pd-stat {
+  flex: 1;
+  min-width: 100px;
+  text-align: center;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 12px 8px;
+}
+.pd-stat-num {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.pd-stat-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.pd-progress-bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 14px;
+}
+.pd-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+.pd-section {
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--rule);
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.pd-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pd-flow-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+.pd-flow-card {
+  flex: 0 0 auto;
+  min-width: 140px;
+  max-width: 180px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.pd-flow-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+.pd-flow-card-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+}
+.pd-flow-card-num {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.pd-flow-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+.pd-flow-card-date {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.pd-flow-card-pills {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.pd-todo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  background: #f8fafc;
+  font-size: 13px;
+}
+.pd-todo-row.done {
+  opacity: 0.55;
+}
+.pd-todo-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.pd-todo-title { flex: 1; min-width: 0; }
+.pd-todo-due {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pd-todo-due.urgent { color: #dc2626; font-weight: 700; }
+.pd-todo-due.soon { color: #f59e0b; font-weight: 700; }
+.pd-timeline {
+  position: relative;
+  padding-left: 24px;
+}
+.pd-timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px; top: 4px; bottom: 4px;
+  width: 2px;
+  background: #e5e7eb;
+  border-radius: 1px;
+}
+.pd-tl-item {
+  position: relative;
+  margin-bottom: 14px;
+}
+.pd-tl-item::before {
+  content: '';
+  position: absolute;
+  left: -20px; top: 4px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 2px solid var(--surface);
+}
+.pd-tl-item.done::before { background: #059669; }
+.pd-tl-date {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.pd-tl-body {
+  font-size: 13px;
+  line-height: 1.5;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
 /* Empty state */
 .empty {
   padding: 30px;
@@ -3811,13 +4002,30 @@ function setFollowDateFilter(dateStr) {
   renderFollows();
 }
 function renderFollows() {
+  // Save current filter values before rebuilding dropdown
+  const selEl = document.getElementById('filter-project');
+  const savedProj = selEl ? selEl.value : '';
   populateProjectFilter();
-  const filterProj = document.getElementById('filter-project').value;
+  // Restore selection
+  if (savedProj && selEl) selEl.value = savedProj;
+  const filterProj = selEl ? selEl.value : '';
   const filterDate = document.getElementById('filter-date').value;
-  let items = [...data.follows].sort((a, b) => new Date(b.date) - new Date(a.date));
-  if (filterProj) items = items.filter(f => String(f.projectId) === String(filterProj));
-  if (filterDate) items = items.filter(f => f.date === filterDate);
   const list = document.getElementById('follow-list');
+
+  // ====== Project Detail View: a specific project is selected ======
+  if (filterProj) {
+    const project = data.projects.find(p => String(p.id) === String(filterProj));
+    if (!project) {
+      list.innerHTML = '<div class="empty">项目不存在</div>';
+      return;
+    }
+    renderProjectDetail(project, filterDate);
+    return;
+  }
+
+  // ====== Default View: all projects ======
+  let items = [...data.follows].sort((a, b) => new Date(b.date) - new Date(a.date));
+  if (filterDate) items = items.filter(f => f.date === filterDate);
   if (items.length === 0) {
     list.innerHTML = '<div class="empty">暂无记录<br><span style="font-size:12px;color:var(--muted);">选择项目后点击「+ 新增记录」添加跟进</span></div>';
     return;
@@ -3877,6 +4085,178 @@ function renderFollows() {
       </div>
     </div>`;
   }).join('');
+}
+
+// ===== Project Detail View for daily follow-up page =====
+function renderProjectDetail(project, filterDate) {
+  const list = document.getElementById('follow-list');
+  const milestones = project.milestones || [];
+  const projName = project.company + (project.client ? '-' + project.client : '');
+  const today = new Date();
+  const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
+
+  // --- 1. Progress Overview ---
+  const totalMs = milestones.length;
+  const doneMs = milestones.filter(m => getMilestoneStatus(m) === 'done').length;
+  const redMs = milestones.filter(m => getMilestoneStatus(m) === 'red').length;
+  const orangeMs = milestones.filter(m => getMilestoneStatus(m) === 'orange').length;
+  const yellowMs = milestones.filter(m => getMilestoneStatus(m) === 'yellow').length;
+  const grayMs = milestones.filter(m => getMilestoneStatus(m) === 'gray').length;
+  const progressPct = totalMs > 0 ? Math.round(doneMs / totalMs * 100) : 0;
+
+  // Todos for this project
+  const projTodos = data.todos.filter(t => String(t.projectId) === String(project.id));
+  const activeTodos = projTodos.filter(t => t.status !== '已完成' && t.status !== '已取消');
+  const doneTodos = projTodos.filter(t => t.status === '已完成');
+
+  // Follows for this project
+  let projFollows = data.follows.filter(f => String(f.projectId) === String(project.id));
+  if (filterDate) projFollows = projFollows.filter(f => f.date === filterDate);
+  projFollows.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const lastFollow = projFollows[0];
+  const daysSince = lastFollow ? Math.round((new Date(todayStr + 'T00:00:00') - new Date(lastFollow.date + 'T00:00:00')) / (1000 * 60 * 60 * 24)) : null;
+
+  // Progress bar color
+  let barColor = '#059669';
+  if (progressPct < 100 && redMs > 0) barColor = '#DC2626';
+  else if (progressPct < 100 && orangeMs > 0) barColor = '#EA580C';
+  else if (progressPct < 100) barColor = '#CA8A04';
+
+  let overviewHtml = `<div class="pd-overview">
+    <div class="pd-overview-top">
+      <div>
+        <div class="pd-overview-title">${escHtml(projName)}</div>
+        <div class="pd-overview-meta">
+          ${project.type ? escHtml(project.type) + ' · ' : ''}负责人：${escHtml(project.owner || '—')}
+          ${lastFollow ? ' · 最近跟进：' + lastFollow.date + (daysSince === 0 ? ' (今天)' : ' (' + daysSince + '天前)') : ' · 暂无跟进'}
+        </div>
+      </div>
+      <button class="btn btn-success" onclick="openFollowModalForCurrent()">+ 新增跟进</button>
+    </div>
+    <div class="pd-stats">
+      <div class="pd-stat"><div class="pd-stat-num" style="color:#059669">${doneMs}</div><div class="pd-stat-label">已完成流程</div></div>
+      <div class="pd-stat"><div class="pd-stat-num" style="color:#dc2626">${redMs}</div><div class="pd-stat-label">紧急/逾期</div></div>
+      <div class="pd-stat"><div class="pd-stat-num" style="color:#ea580c">${orangeMs}</div><div class="pd-stat-label">14天内</div></div>
+      <div class="pd-stat"><div class="pd-stat-num" style="color:#ca8a04">${yellowMs}</div><div class="pd-stat-label">进行中</div></div>
+      <div class="pd-stat"><div class="pd-stat-num" style="color:#9ca3af">${grayMs}</div><div class="pd-stat-label">未排期</div></div>
+      <div class="pd-stat"><div class="pd-stat-num" style="color:#2563eb">${activeTodos.length}</div><div class="pd-stat-label">待办事项</div></div>
+      <div class="pd-stat"><div class="pd-stat-num" style="color:#f59e0b">${projFollows.length}</div><div class="pd-stat-label">跟进记录</div></div>
+    </div>
+    <div class="pd-progress-bar"><div class="pd-progress-fill" style="width:${progressPct}%;background:${barColor};"></div></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px;text-align:right;">总进度 ${progressPct}%（${doneMs}/${totalMs} 流程完成）</div>
+  </div>`;
+
+  // --- 2. Flow Board (mini) ---
+  let flowHtml = '';
+  if (milestones.length === 0) {
+    flowHtml = `<div class="pd-section">
+      <div class="pd-section-title">📋 项目流程</div>
+      <div class="empty">暂无流程节点<br><span style="font-size:11px;color:var(--muted);">到「项目管理」页面添加流程节点</span></div>
+    </div>`;
+  } else {
+    const cardsHtml = milestones.map((m, idx) => {
+      const status = getMilestoneStatus(m);
+      const color = FLOW_STATUS_COLORS[status];
+      const tasks = getMilestoneTodos(m.id);
+      const doneCount = tasks.filter(t => t.status === '已完成').length;
+      const dateText = formatMilestoneDate(m);
+      return `<div class="pd-flow-card" style="background:${color}15;border:1px solid ${color}40;" onclick="jumpToProjectMilestone('${project.id}',${idx})">
+        <div class="pd-flow-card-bar" style="background:${color};"></div>
+        <div class="pd-flow-card-num">节点 ${idx + 1}</div>
+        <div class="pd-flow-card-title">${escHtml(m.title)}</div>
+        <div class="pd-flow-card-date">${dateText}</div>
+        <div class="pd-flow-card-pills">
+          <span class="flow-status-pill ${status}" style="font-size:10px;">${FLOW_STATUS_LABELS[status]}</span>
+          ${tasks.length > 0 ? `<span class="flow-status-pill ${status === 'done' ? 'done' : 'gray'}" style="font-size:10px;">${doneCount}/${tasks.length}</span>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    flowHtml = `<div class="pd-section">
+      <div class="pd-section-title">📋 项目流程（点击节点查看详情）</div>
+      <div class="pd-flow-strip">${cardsHtml}</div>
+    </div>`;
+  }
+
+  // --- 3. Todos & Missing Items ---
+  let todosHtml = '';
+  if (activeTodos.length === 0 && doneTodos.length === 0) {
+    todosHtml = `<div class="pd-section">
+      <div class="pd-section-title">✅ 待办与缺漏</div>
+      <div class="empty">暂无待办事项</div>
+    </div>`;
+  } else {
+    const todoRows = activeTodos.map(t => {
+      const dl = t.deadline ? Math.ceil((new Date(t.deadline) - new Date(todayStr + 'T00:00:00')) / (1000 * 60 * 60 * 24)) : null;
+      let dueClass = '', dueText = t.deadline || '未排期';
+      if (dl !== null) {
+        if (dl < 0) { dueClass = 'urgent'; dueText = '逾期' + Math.abs(dl) + '天'; }
+        else if (dl <= 3) { dueClass = 'urgent'; dueText = '剩' + dl + '天'; }
+        else if (dl <= 14) { dueClass = 'soon'; dueText = '剩' + dl + '天'; }
+        else dueText = '剩' + dl + '天';
+      }
+      const dotColor = t.status === '进行中' ? '#f59e0b' : '#9ca3af';
+      const ms = milestones.find(m => m.id === t.milestoneId);
+      return `<div class="pd-todo-row">
+        <div class="pd-todo-dot" style="background:${dotColor};"></div>
+        <div class="pd-todo-title">${escHtml(t.title)}${ms ? '<span style="color:var(--muted);font-size:11px;"> (' + escHtml(ms.title) + ')</span>' : ''}</div>
+        <span class="tag tag-${(t.priority||'p2').toLowerCase()}" style="font-size:10px;">${t.priority || 'P2'}</span>
+        <span class="role-tag ${roleTagClass(t.role||'')}" style="font-size:10px;">${escHtml(t.role||'—')}</span>
+        <span class="pd-todo-due ${dueClass}">${dueText}</span>
+      </div>`;
+    }).join('');
+    const doneRows = doneTodos.length > 0 ? doneTodos.slice(0, 5).map(t => {
+      const ms = milestones.find(m => m.id === t.milestoneId);
+      return `<div class="pd-todo-row done">
+        <div class="pd-todo-dot" style="background:#059669;"></div>
+        <div class="pd-todo-title">${escHtml(t.title)}${ms ? '<span style="color:var(--muted);font-size:11px;"> (' + escHtml(ms.title) + ')</span>' : ''}</div>
+        <span style="font-size:11px;color:#059669;">已完成</span>
+      </div>`;
+    }).join('') : '';
+    todosHtml = `<div class="pd-section">
+      <div class="pd-section-title">✅ 待办与缺漏${activeTodos.length > 0 ? '（<span style="color:#dc2626;">' + activeTodos.length + '项待处理</span>）' : ''}</div>
+      ${todoRows || '<div style="color:var(--muted);font-size:12px;padding:4px 0;">无待处理事项</div>'}
+      ${doneRows ? '<div style="margin-top:8px;font-size:12px;color:var(--muted);">已完成 (' + doneTodos.length + ')</div>' + doneRows : ''}
+    </div>`;
+  }
+
+  // --- 4. Follow-up Timeline ---
+  let timelineHtml = '';
+  if (projFollows.length === 0) {
+    timelineHtml = `<div class="pd-section">
+      <div class="pd-section-title">📝 跟进记录时间线</div>
+      <div class="empty">暂无跟进记录<br><span style="font-size:11px;color:var(--muted);">点击上方「+ 新增跟进」添加</span></div>
+    </div>`;
+  } else {
+    const tlItems = projFollows.map(f => {
+      const daysAgo = Math.round((new Date(todayStr + 'T00:00:00') - new Date(f.date + 'T00:00:00')) / (1000 * 60 * 60 * 24));
+      let dateLabel = f.date;
+      if (daysAgo === 0) dateLabel = f.date + ' (今天)';
+      else if (daysAgo === 1) dateLabel = f.date + ' (昨天)';
+      else if (daysAgo > 0) dateLabel = f.date + ' (' + daysAgo + '天前)';
+      const ms = milestones.find(m => m.id === f.milestoneId);
+      return `<div class="pd-tl-item">
+        <div class="pd-tl-date">${dateLabel}${ms ? ' · ' + escHtml(ms.title) : ''} <span onclick="jumpToCalendar('${f.date}')" style="cursor:pointer;color:#2563eb;font-size:12px;margin-left:4px;" title="在日历中查看">📅</span> <span onclick="deleteFollow(${f.id})" style="cursor:pointer;color:#dc2626;font-size:12px;float:right;" title="删除">🗑</span></div>
+        <div class="pd-tl-body">
+          <strong>做了什么：</strong>${f.done || '—'}<br>
+          ${f.block ? `<strong style="color:#dc2626">阻碍：</strong>${f.block}<br>` : ''}
+          ${f.need ? `<strong>需要什么：</strong>${f.need}<br>` : ''}
+          ${f.next ? `<strong>下一步：</strong>${f.next}` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    timelineHtml = `<div class="pd-section">
+      <div class="pd-section-title">📝 跟进记录时间线（共${projFollows.length}条）</div>
+      <div class="pd-timeline">${tlItems}</div>
+    </div>`;
+  }
+
+  list.innerHTML = overviewHtml + flowHtml + todosHtml + timelineHtml;
+}
+
+function jumpToProjectMilestone(projId, msIdx) {
+  showPage('overview');
+  selectFlowProject(projId);
+  selectFlowMilestone(msIdx);
 }
 function clearFollowFilters() {
   document.getElementById('filter-project').value = '';
