@@ -455,6 +455,73 @@ td {
 }
 tr:hover td { background: #f8fafc; }
 
+/* Todo Cards */
+.todo-card-list { display: flex; flex-direction: column; gap: 10px; }
+.todo-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  transition: box-shadow 0.15s;
+}
+.todo-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.todo-card.done {
+  border: 2px solid #059669;
+  background: #ecfdf5;
+}
+.todo-card.cancelled {
+  opacity: 0.5;
+  border-style: dashed;
+}
+.todo-card-left { flex: 0 0 auto; }
+.todo-card-center { flex: 1; min-width: 0; }
+.todo-card-right { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+.todo-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  word-break: break-word;
+}
+.todo-card.done .todo-card-title {
+  text-decoration: none;
+}
+.todo-card-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.todo-card-due {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.todo-card-due.overdue { background: #fee2e2; color: #991b1b; }
+.todo-card-due.urgent { background: #fef3c7; color: #92400e; }
+.todo-card-due.normal { background: #f3f4f6; color: #6b7280; }
+.todo-card-due.done-badge { background: #d1fae5; color: #065f46; }
+.todo-status-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--rule);
+  font-size: 12px;
+  cursor: pointer;
+  background: var(--surface);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.todo-status-btn.not-started { color: #6b7280; }
+.todo-status-btn.in-progress { color: #2563eb; border-color: #bfdbfe; background: #eff6ff; }
+.todo-status-btn.done { color: #059669; border-color: #a7f3d0; background: #ecfdf5; }
+.todo-status-btn.cancelled { color: #9ca3af; }
+
 /* Tags */
 .tag {
   display: inline-block;
@@ -2159,6 +2226,7 @@ tr:hover td { background: #f8fafc; }
         <button class="btn btn-primary" onclick="openModal('todoModal')">+ 新增待办</button>
       </div>
       <div class="filters">
+        <select id="filter-todo-project" onchange="renderTodos()"></select>
         <select id="filter-todo-priority" onchange="renderTodos()">
           <option value="">所有优先级</option>
           <option value="P0">P0 最高</option>
@@ -2171,26 +2239,11 @@ tr:hover td { background: #f8fafc; }
           <option value="未开始">未开始</option>
           <option value="进行中">进行中</option>
           <option value="已完成">已完成</option>
+          <option value="已取消">已取消</option>
         </select>
         <button class="btn btn-sm" onclick="clearTodoFilters()">清除筛选</button>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>截止日期</th>
-              <th>剩余天数</th>
-              <th>项目</th>
-              <th>待办事项</th>
-              <th>角色</th>
-              <th>优先级</th>
-              <th>状态</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody id="todo-list"></tbody>
-        </table>
-      </div>
+      <div id="todo-card-list" class="todo-card-list"></div>
     </div>
   </div>
 
@@ -4442,41 +4495,88 @@ function jumpToCalendar(dateStr) {
 }
 
 // ========== Render Todos ==========
+function populateTodoProjectFilter() {
+  const sel = document.getElementById('filter-todo-project');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">所有项目</option>' + data.projects.map(p => `<option value="${p.id}">${p.id} · ${escHtml(p.company)}${p.client ? '-' + escHtml(p.client) : ''}</option>`).join('');
+}
 function renderTodos() {
+  // Ensure project filter is populated
+  const projSel = document.getElementById('filter-todo-project');
+  const savedProj = projSel ? projSel.value : '';
+  if (projSel) {
+    populateTodoProjectFilter();
+    if (savedProj) projSel.value = savedProj;
+  }
+  const filterProject = projSel ? projSel.value : '';
   const filterPriority = document.getElementById('filter-todo-priority').value;
   const filterStatus = document.getElementById('filter-todo-status').value;
   let items = [...data.todos].sort((a, b) => {
-    const o = { 'P0': 0, 'P1': 1, 'P2': 2, 'P3': 3 };
-    if (o[a.priority] !== o[b.priority]) return o[a.priority] - o[b.priority];
-    return new Date(a.deadline) - new Date(b.deadline);
+    // Not-done first, then done, then cancelled
+    const sOrder = { '未开始': 0, '进行中': 1, '已完成': 2, '已取消': 3 };
+    const so = (sOrder[a.status] != null ? sOrder[a.status] : 4) - (sOrder[b.status] != null ? sOrder[b.status] : 4);
+    if (so !== 0) return so;
+    const pOrder = { 'P0': 0, 'P1': 1, 'P2': 2, 'P3': 3 };
+    if (pOrder[a.priority] !== pOrder[b.priority]) return pOrder[a.priority] - pOrder[b.priority];
+    return new Date(a.deadline || '9999-12-31') - new Date(b.deadline || '9999-12-31');
   });
+  if (filterProject) items = items.filter(t => String(t.projectId) === String(filterProject));
   if (filterPriority) items = items.filter(t => t.priority === filterPriority);
   if (filterStatus) items = items.filter(t => t.status === filterStatus);
-  const tbody = document.getElementById('todo-list');
-  if (items.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="empty">暂无待办</td></tr>'; return; }
+  const list = document.getElementById('todo-card-list');
+  if (!list) return;
+  if (items.length === 0) { list.innerHTML = '<div class="empty">暂无待办</div>'; return; }
   const today = new Date();
-  tbody.innerHTML = items.map(t => {
-    const proj = data.projects.find(p => p.id === t.projectId);
-    const dl = t.deadline ? Math.ceil((new Date(t.deadline) - today) / (1000*60*60*24)) : '';
-    const dc = dl < 0 ? 'color:#dc2626;font-weight:700;' : dl <= 3 ? 'color:#f59e0b;font-weight:700;' : '';
-    return `<tr>
-      <td>${t.deadline || '—'}</td>
-      <td style="${dc}">${dl !== '' ? dl + '天' : '—'}</td>
-      <td>${proj ? proj.company + (proj.client ? '-' + proj.client : '') : t.projectId}</td>
-      <td>${t.title}${t.note ? `<br><span style="font-size:11px;color:var(--muted);">${t.note}</span>` : ''}</td>
-      <td><span class="role-tag ${roleTagClass(t.role || '')}">${escHtml(t.role || '—')}</span></td>
-      <td><span class="tag tag-${(t.priority||'p2').toLowerCase()}">${t.priority || 'P2'}</span></td>
-      <td><select onchange="updateTodoStatus('${t.id}', this.value)" style="font-size:12px;padding:4px;border-radius:4px;border:1px solid #e5e7eb;">
-        <option value="未开始" ${t.status==='未开始'?'selected':''}>未开始</option>
-        <option value="进行中" ${t.status==='进行中'?'selected':''}>进行中</option>
-        <option value="已完成" ${t.status==='已完成'?'selected':''}>已完成</option>
-        <option value="已取消" ${t.status==='已取消'?'selected':''}>已取消</option>
-      </select></td>
-      <td><button class="btn btn-sm btn-danger" onclick="deleteTodo('${t.id}')">删除</button></td>
-    </tr>`;
+  const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  list.innerHTML = items.map(t => {
+    const proj = data.projects.find(p => String(p.id) === String(t.projectId));
+    const projName = proj ? proj.company + (proj.client ? '-' + proj.client : '') : t.projectId;
+    const dl = t.deadline ? Math.ceil((new Date(t.deadline + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / (1000*60*60*24)) : null;
+    let dueClass = 'normal', dueText = t.deadline || '未排期';
+    if (t.status === '已完成') {
+      dueClass = 'done-badge';
+      dueText = '已完成';
+    } else if (dl !== null) {
+      if (dl < 0) { dueClass = 'overdue'; dueText = '逾期' + Math.abs(dl) + '天'; }
+      else if (dl === 0) { dueClass = 'urgent'; dueText = '今天到期'; }
+      else if (dl <= 3) { dueClass = 'urgent'; dueText = '剩' + dl + '天'; }
+      else dueText = '剩' + dl + '天';
+    }
+    const isDone = t.status === '已完成';
+    const isCancelled = t.status === '已取消';
+    const cardClass = isDone ? 'done' : isCancelled ? 'cancelled' : '';
+    let statusClass = 'not-started';
+    if (t.status === '进行中') statusClass = 'in-progress';
+    else if (t.status === '已完成') statusClass = 'done';
+    else if (t.status === '已取消') statusClass = 'cancelled';
+    const statusLabel = t.status === '未开始' ? '未开始' : t.status === '进行中' ? '进行中' : t.status === '已完成' ? '已完成' : '已取消';
+    const nextStatus = t.status === '未开始' ? '进行中' : t.status === '进行中' ? '已完成' : '未开始';
+    const ms = proj && proj.milestones ? proj.milestones.find(m => m.id === t.milestoneId) : null;
+    return `<div class="todo-card ${cardClass}">
+      <div class="todo-card-left">
+        <span class="tag tag-${(t.priority||'p2').toLowerCase()}">${t.priority || 'P2'}</span>
+      </div>
+      <div class="todo-card-center">
+        <div class="todo-card-title">${escHtml(t.title)}</div>
+        <div class="todo-card-meta">
+          <span style="color:var(--accent);font-weight:600;">${escHtml(projName)}</span>
+          ${ms ? '<span>· ' + escHtml(ms.title) + '</span>' : ''}
+          ${t.role ? '<span>· <span class="role-tag ' + roleTagClass(t.role) + '">' + escHtml(t.role) + '</span></span>' : ''}
+          ${t.deadline ? '<span>· 截止 ' + t.deadline + '</span>' : ''}
+          ${t.note ? '<span>· ' + escHtml(t.note) + '</span>' : ''}
+        </div>
+      </div>
+      <div class="todo-card-right">
+        <span class="todo-card-due ${dueClass}">${dueText}</span>
+        <button class="todo-status-btn ${statusClass}" onclick="updateTodoStatus('${t.id}','${nextStatus}')" title="点击切换状态">${statusLabel}</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTodo('${t.id}')" title="删除">删除</button>
+      </div>
+    </div>`;
   }).join('');
 }
 function clearTodoFilters() {
+  const projSel = document.getElementById('filter-todo-project');
+  if (projSel) projSel.value = '';
   document.getElementById('filter-todo-priority').value = '';
   document.getElementById('filter-todo-status').value = '';
   renderTodos();
