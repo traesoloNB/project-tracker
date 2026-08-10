@@ -1380,6 +1380,18 @@ tr:hover td { background: #f8fafc; }
   transition: color 0.15s;
 }
 .plan-item-delete:hover { color: var(--accent2); }
+/* Carried-over plan item */
+.plan-item-carried {
+  display: inline-block;
+  font-size: 10px;
+  color: #92400e;
+  background: #fef3c7;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
 .plan-add-row {
   padding: 12px 20px;
   border-top: 1px solid var(--rule);
@@ -2906,7 +2918,10 @@ function showPage(page) {
   if (t) t.textContent = titles[page] || page;
   if (page === 'dashboard') renderDashboard();
   if (page === 'overview') renderFlowBoard();
-  if (page === 'calendar') { renderCalendar(); selectToday(); }
+  if (page === 'calendar') {
+    autoCarryPlans();
+    renderCalendar(); selectToday();
+  }
   if (page === 'daily') {
     if (!followCalYear) { const now = new Date(); followCalYear = now.getFullYear(); followCalMonth = now.getMonth(); }
     renderFollows();
@@ -3227,6 +3242,54 @@ function getPlanForDate(dateStr) {
   return data.plans.find(p => p.date === dateStr);
 }
 
+// ========== Auto-carry: move yesterday's unfinished plans to today ==========
+function autoCarryPlans() {
+  const now = new Date();
+  const todayStr = formatDateStr(now.getFullYear(), now.getMonth(), now.getDate());
+  // Check if we already carried over today (stored as a flag)
+  const carryKey = 'project_tracker_carry_done_' + currentWorkspace;
+  if (localStorage.getItem(carryKey) === todayStr) return false; // already done today
+
+  // Look back up to 7 days for unfinished plan items
+  let carriedItems = [];
+  for (let i = 1; i <= 7; i++) {
+    const past = new Date(now);
+    past.setDate(past.getDate() - i);
+    const pastStr = formatDateStr(past.getFullYear(), past.getMonth(), past.getDate());
+    const pastPlan = getPlanForDate(pastStr);
+    if (pastPlan && pastPlan.items) {
+      pastPlan.items.forEach(item => {
+        // Only carry items that are not done and not already carried
+        if (!item.done && !item.carriedTo) {
+          carriedItems.push({ text: item.text, from: pastStr });
+          // Mark the original item as carried so we don't carry it again
+          item.carriedTo = todayStr;
+        }
+      });
+    }
+  }
+
+  if (carriedItems.length > 0) {
+    // Add to today's plan
+    let todayPlan = getPlanForDate(todayStr);
+    if (!todayPlan) {
+      todayPlan = { date: todayStr, items: [] };
+      data.plans.push(todayPlan);
+    }
+    carriedItems.forEach(ci => {
+      // Check if this item text already exists today (avoid duplicates)
+      const exists = todayPlan.items.some(it => it.text === ci.text && !it.done);
+      if (!exists) {
+        todayPlan.items.push({ text: ci.text, done: false, carriedFrom: ci.from });
+      }
+    });
+    saveData(data);
+  }
+
+  localStorage.setItem(carryKey, todayStr);
+  return carriedItems.length > 0;
+}
+
 function renderCalendar() {
   const title = document.getElementById('cal-month-title');
   title.textContent = calYear + '年' + (calMonth + 1) + '月';
@@ -3385,7 +3448,7 @@ function renderPlanPanel() {
     list.innerHTML = items.map((item, idx) => `
       <div class="plan-item">
         <div class="plan-checkbox ${item.done ? 'checked' : ''}" onclick="togglePlanItem(${idx})">${item.done ? '✓' : ''}</div>
-        <div class="plan-item-text ${item.done ? 'done' : ''}">${escHtml(item.text)}</div>
+        <div class="plan-item-text ${item.done ? 'done' : ''}">${escHtml(item.text)}${item.carriedFrom ? `<span class="plan-item-carried" title="从 ${item.carriedFrom} 顺延">↻ ${item.carriedFrom}</span>` : ''}</div>
         <button class="plan-item-delete" onclick="deletePlanItem(${idx})">×</button>
       </div>
     `).join('');
@@ -4990,6 +5053,10 @@ document.addEventListener('DOMContentLoaded', function() {
   updateWorkspaceUI();
   updateHeaderDate();
   updateNavBadges();
+  const carried = autoCarryPlans();
+  if (carried) {
+    setTimeout(() => showToast('昨日未完成计划已自动顺延到今天'), 800);
+  }
   showPage('calendar');
   cloudSyncInit();
 });
