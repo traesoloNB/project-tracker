@@ -1472,17 +1472,18 @@ tr:hover td { background: #f8fafc; }
 /* ===== Flow Board ===== */
 .flow-toolbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
 .flow-project-pills {
-  display: flex;
-  gap: 8px;
   flex: 1;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
+  align-content: flex-start;
+  display: flex;
+  flex-direction: column;
 }
 .flow-pill {
   padding: 7px 16px;
@@ -1546,6 +1547,32 @@ tr:hover td { background: #f8fafc; }
 }
 .flow-pill.active .flow-pill-edit:hover {
   color: white;
+}
+/* Project group labels */
+.proj-group {
+  margin-bottom: 8px;
+}
+.proj-group-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.proj-group-label::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+.proj-group-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .flow-strip {
@@ -2195,6 +2222,11 @@ tr:hover td { background: #f8fafc; }
         <input type="text" id="proj-client" placeholder="如：德国UBA认证">
       </div>
       <div class="form-group">
+        <label>项目分组</label>
+        <input type="text" id="proj-category" placeholder="如：德国KTW认证、法国ACS认证" list="category-suggestions">
+        <datalist id="category-suggestions"></datalist>
+      </div>
+      <div class="form-group">
         <label>认证类型</label>
         <input type="text" id="proj-type" placeholder="如：德国饮用水自我申明">
       </div>
@@ -2601,6 +2633,7 @@ if (!data.plans) data.plans = [];
 // ========== Data Migration: add milestones + milestoneId ==========
 data.projects.forEach(p => {
   if (!p.milestones) p.milestones = [];
+  if (!p.category) p.category = '';
 });
 data.follows.forEach(f => {
   if (!f.milestoneId) f.milestoneId = null;
@@ -3555,14 +3588,58 @@ function renderFlowBoard() {
     currentFlowProject = data.projects[0].id;
     currentFlowMilestone = 0;
   }
-  pillsEl.innerHTML = data.projects.map(p => {
-    const active = p.id === currentFlowProject ? 'active' : '';
-    return `<div class="flow-pill ${active}" onclick="selectFlowProject('${p.id}')">${p.id} · ${escHtml(p.client || p.company)} <span class="flow-pill-edit" onclick="event.stopPropagation();editProject('${p.id}')" title="编辑项目">✎</span><span class="flow-pill-del" onclick="event.stopPropagation();deleteProject('${p.id}')" title="删除项目">×</span></div>`;
-  }).join('');
+  pillsEl.innerHTML = renderProjectPillsGrouped();
+  // Populate category suggestions
+  const catDatalist = document.getElementById('category-suggestions');
+  if (catDatalist) {
+    const cats = [...new Set(data.projects.map(p => p.category).filter(c => c))];
+    catDatalist.innerHTML = cats.map(c => `<option value="${escHtml(c)}">`).join('');
+  }
 
   const project = data.projects.find(p => p.id === currentFlowProject);
   renderFlowStrip(project);
   renderFlowDetail(project, currentFlowMilestone);
+}
+
+function renderProjectPillsGrouped() {
+  // Group projects by category
+  const groups = {};
+  const noGroup = [];
+  data.projects.forEach(p => {
+    if (p.category) {
+      if (!groups[p.category]) groups[p.category] = [];
+      groups[p.category].push(p);
+    } else {
+      noGroup.push(p);
+    }
+  });
+  const groupNames = Object.keys(groups).sort();
+  let html = '';
+  // If there are groups, render each group with a label
+  if (groupNames.length > 0) {
+    groupNames.forEach(gname => {
+      html += `<div class="proj-group">
+        <div class="proj-group-label">${escHtml(gname)}（${groups[gname].length}）</div>
+        <div class="proj-group-pills">${groups[gname].map(p => renderFlowPill(p)).join('')}</div>
+      </div>`;
+    });
+    // Ungrouped projects
+    if (noGroup.length > 0) {
+      html += `<div class="proj-group">
+        <div class="proj-group-label">未分组（${noGroup.length}）</div>
+        <div class="proj-group-pills">${noGroup.map(p => renderFlowPill(p)).join('')}</div>
+      </div>`;
+    }
+  } else {
+    // No groups at all — flat list like before
+    html = data.projects.map(p => renderFlowPill(p)).join('');
+  }
+  return html;
+}
+
+function renderFlowPill(p) {
+  const active = p.id === currentFlowProject ? 'active' : '';
+  return `<div class="flow-pill ${active}" onclick="selectFlowProject('${p.id}')">${p.id} · ${escHtml(p.client || p.company)} <span class="flow-pill-edit" onclick="event.stopPropagation();editProject('${p.id}')" title="编辑项目">✎</span><span class="flow-pill-del" onclick="event.stopPropagation();deleteProject('${p.id}')" title="删除项目">×</span></div>`;
 }
 
 function renderFlowStrip(project) {
@@ -4218,7 +4295,7 @@ function renderProjectDetail(project, filterDate) {
       <div>
         <div class="pd-overview-title">${escHtml(projName)}</div>
         <div class="pd-overview-meta">
-          ${project.type ? escHtml(project.type) + ' · ' : ''}负责人：${escHtml(project.owner || '—')}
+          ${project.category ? '<span style="background:#eff6ff;color:#2563eb;padding:2px 8px;border-radius:4px;font-weight:600;">' + escHtml(project.category) + '</span> · ' : ''}${project.type ? escHtml(project.type) + ' · ' : ''}负责人：${escHtml(project.owner || '—')}
           ${lastFollow ? ' · 最近跟进：' + lastFollow.date + (daysSince === 0 ? ' (今天)' : ' (' + daysSince + '天前)') : ' · 暂无跟进'}
         </div>
       </div>
@@ -4423,6 +4500,7 @@ function saveProject() {
     project.id = id;
     project.company = company;
     project.client = document.getElementById('proj-client').value.trim();
+    project.category = document.getElementById('proj-category').value.trim();
     project.type = document.getElementById('proj-type').value.trim();
     project.stage = document.getElementById('proj-stage').value.trim();
     project.owner = document.getElementById('proj-owner').value.trim();
@@ -4441,6 +4519,7 @@ function saveProject() {
     if (data.projects.find(p => p.id === id)) { showToast('项目编号已存在'); return; }
     data.projects.push({
       id, company, client: document.getElementById('proj-client').value.trim(),
+      category: document.getElementById('proj-category').value.trim(),
       type: document.getElementById('proj-type').value.trim(),
       stage: document.getElementById('proj-stage').value.trim(),
       owner: document.getElementById('proj-owner').value.trim(),
@@ -4451,7 +4530,7 @@ function saveProject() {
     saveData(data); closeModal('projectModal'); renderOverview(); renderFlowBoard(); showToast('项目已创建');
   }
   document.getElementById('proj-edit-id').value = '';
-  ['proj-company','proj-id','proj-client','proj-type','proj-stage','proj-owner','proj-target','proj-budget','proj-note'].forEach(id => document.getElementById(id).value = '');
+  ['proj-company','proj-id','proj-client','proj-category','proj-type','proj-stage','proj-owner','proj-target','proj-budget','proj-note'].forEach(id => document.getElementById(id).value = '');
 }
 function editProject(projId) {
   const project = data.projects.find(p => p.id === projId);
@@ -4460,6 +4539,7 @@ function editProject(projId) {
   document.getElementById('proj-company').value = project.company || '';
   document.getElementById('proj-id').value = project.id || '';
   document.getElementById('proj-client').value = project.client || '';
+  document.getElementById('proj-category').value = project.category || '';
   document.getElementById('proj-type').value = project.type || '';
   document.getElementById('proj-stage').value = project.stage || '';
   document.getElementById('proj-owner').value = project.owner || '';
@@ -4471,7 +4551,7 @@ function editProject(projId) {
 }
 function newProject() {
   document.getElementById('proj-edit-id').value = '';
-  ['proj-company','proj-id','proj-client','proj-type','proj-stage','proj-owner','proj-target','proj-budget','proj-note'].forEach(id => document.getElementById(id).value = '');
+  ['proj-company','proj-id','proj-client','proj-category','proj-type','proj-stage','proj-owner','proj-target','proj-budget','proj-note'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('project-modal-title').textContent = '新建项目';
   openModal('projectModal');
 }
