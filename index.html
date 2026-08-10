@@ -4896,10 +4896,13 @@ async function cloudSyncPull(forcePull) {
   const config = getCloudConfig();
   if (!config || !config.token || cloudSyncBusy) return;
   cloudSyncBusy = true;
+  // Cancel any pending debounced push to avoid conflict
+  if (cloudPushTimer) { clearTimeout(cloudPushTimer); cloudPushTimer = null; }
   updateSyncIndicator('syncing');
   try {
-    const url = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch;
-    const resp = await fetch(url, { headers: { 'Authorization': 'token ' + config.token } });
+    // Add cache-busting timestamp to avoid GitHub CDN returning stale SHA
+    const url = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch + '&t=' + Date.now();
+    const resp = await fetch(url, { headers: { 'Authorization': 'token ' + config.token, 'Cache-Control': 'no-cache' } });
     if (resp.status === 404) {
       cloudSyncBusy = false;
       await cloudSyncPush(true);
@@ -4941,7 +4944,12 @@ async function cloudSyncPull(forcePull) {
     config.lastSyncError = null;
     setCloudConfig(config);
     updateSyncIndicator('synced');
-    // After pull, also push if local is newer for any workspace
+    // After force pull, skip push — local data IS cloud data now
+    if (forcePull) {
+      cloudSyncBusy = false;
+      return;
+    }
+    // After normal pull, also push if local is newer for any workspace
     let needPush = false;
     WORKSPACES.forEach(ws => {
       const localTs = localStorage.getItem(LAST_MOD_PREFIX + ws.id) || '';
@@ -4971,18 +4979,6 @@ async function cloudSyncPush(isFirstPush) {
   cloudSyncBusy = true;
   if (!isFirstPush) updateSyncIndicator('syncing');
   try {
-    // Always fetch the latest SHA before pushing to avoid conflicts
-    try {
-      const getUrl = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch;
-      const getResp = await fetch(getUrl, { headers: { 'Authorization': 'token ' + config.token } });
-      if (getResp.ok) {
-        const getFile = await getResp.json();
-        config.fileSha = getFile.sha;
-      } else if (getResp.status === 404) {
-        config.fileSha = null; // File doesn't exist yet, create new
-      }
-    } catch(e) { /* network error, try with existing SHA */ }
-
     const allData = { _meta: { lastSync: new Date().toISOString(), version: '2', workspaces: {} } };
     WORKSPACES.forEach(ws => {
       const raw = localStorage.getItem(DATA_PREFIX + ws.id);
@@ -4993,36 +4989,48 @@ async function cloudSyncPush(isFirstPush) {
     });
     const contentStr = JSON.stringify(allData);
     const encoded = btoa(unescape(encodeURIComponent(contentStr)));
-    const body = { message: 'Sync data - ' + new Date().toLocaleString('zh-CN'), content: encoded, branch: config.branch };
-    if (config.fileSha) body.sha = config.fileSha;
     const putUrl = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE;
-    let resp = await fetch(putUrl, {
-      method: 'PUT',
-      headers: { 'Authorization': 'token ' + config.token, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
 
-    // If SHA mismatch (409), retry once with fresh SHA
-    if (resp.status === 409 || resp.status === 422) {
+    // Try up to 4 times (initial + 3 retries) to handle SHA mismatch
+    let resp = null;
+    let lastErr = '';
+    for (let attempt = 0; attempt < 4; attempt++) {
+      // Fetch latest SHA with cache-busting to avoid stale CDN response
       try {
-        const getUrl = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch;
-        const getResp = await fetch(getUrl, { headers: { 'Authorization': 'token ' + config.token } });
+        const getUrl = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch + '&t=' + Date.now();
+        const getResp = await fetch(getUrl, { headers: { 'Authorization': 'token ' + config.token, 'Cache-Control': 'no-cache' } });
         if (getResp.ok) {
           const getFile = await getResp.json();
           config.fileSha = getFile.sha;
-          body.sha = config.fileSha;
-          resp = await fetch(putUrl, {
-            method: 'PUT',
-            headers: { 'Authorization': 'token ' + config.token, 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          });
+        } else if (getResp.status === 404) {
+          config.fileSha = null;
         }
-      } catch(e) { /* retry failed */ }
+      } catch(e) { /* network error, try with existing SHA */ }
+
+      const body = { message: 'Sync data - ' + new Date().toLocaleString('zh-CN'), content: encoded, branch: config.branch };
+      if (config.fileSha) body.sha = config.fileSha;
+      resp = await fetch(putUrl, {
+        method: 'PUT',
+        headers: { 'Authorization': 'token ' + config.token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (resp.ok) break; // Success!
+
+      // If SHA mismatch (422) or conflict (409), wait 1s and retry
+      if (resp.status === 422 || resp.status === 409) {
+        const errData = await resp.json().catch(() => ({}));
+        lastErr = errData.message || 'HTTP ' + resp.status;
+        if (attempt < 3) await new Promise(r => setTimeout(r, 1000));
+      } else {
+        // Non-retryable error
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.message || 'HTTP ' + resp.status);
+      }
     }
 
-    if (!resp.ok) {
-      const errData = await resp.json().catch(() => ({}));
-      throw new Error(errData.message || 'HTTP ' + resp.status);
+    if (!resp || !resp.ok) {
+      throw new Error(lastErr || '推送失败，请稍后重试');
     }
     const result = await resp.json();
     config.fileSha = result.content.sha;
@@ -5093,16 +5101,21 @@ saveData = function(d) {
 };
 
 // Init
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
   updateWorkspaceUI();
   updateHeaderDate();
   updateNavBadges();
+  showPage('calendar');
+  // Sync FIRST (before autoCarryPlans) to get latest cloud data
+  // Then run autoCarryPlans so carried-over items are based on synced data
+  const config = getCloudConfig();
+  if (config && config.token) {
+    await cloudSyncInit();
+  }
   const carried = autoCarryPlans();
   if (carried) {
     setTimeout(() => showToast('昨日未完成计划已自动顺延到今天'), 800);
   }
-  showPage('calendar');
-  cloudSyncInit();
 });
 </script>
 
