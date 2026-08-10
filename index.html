@@ -4,6 +4,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>工作台 — 项目管理中心</title>
 <style>
 :root {
@@ -2584,6 +2587,10 @@ tr:hover td { background: #f8fafc; }
         <input type="text" id="sync-branch" placeholder="master" value="master" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;">
       </div>
       <div id="sync-status-display" style="font-size:12px;color:var(--muted);padding:8px 0;"></div>
+      <div id="sync-force-pull-section" style="display:none;padding-top:8px;border-top:1px solid var(--border);">
+        <button class="btn btn-sm" onclick="cloudSyncForcePull()" style="width:100%;color:#2563eb;border:1px solid #2563eb;">⬇ 强制拉取云端数据（覆盖本地）</button>
+        <p style="font-size:11px;color:var(--muted);margin-top:4px;">如果换电脑后数据没同步，点此按钮从云端强制拉取最新数据。</p>
+      </div>
     </div>
     <div class="modal-footer" style="display:flex;justify-content:space-between;">
       <button class="btn btn-sm" onclick="cloudSyncDisconnect()" id="sync-disconnect-btn" style="color:#dc2626;">断开同步</button>
@@ -4857,6 +4864,7 @@ function openSyncModal() {
     statusEl.textContent = '';
   }
   document.getElementById('sync-disconnect-btn').style.display = config ? '' : 'none';
+  document.getElementById('sync-force-pull-section').style.display = config ? '' : 'none';
   openModal('syncModal');
 }
 function cloudSyncSaveAndSync() {
@@ -4866,11 +4874,15 @@ function cloudSyncSaveAndSync() {
   const branch = document.getElementById('sync-branch').value.trim() || 'master';
   if (!token) { showToast('请输入 GitHub Token'); return; }
   if (!owner || !repo) { showToast('请填写仓库信息'); return; }
+  // Check if this is a first-time setup (no previous config)
+  const prevConfig = getCloudConfig();
+  const isFirstSetup = !prevConfig || !prevConfig.token;
   const config = { token, owner, repo, branch, fileSha: null, lastSyncStatus: null, lastSyncTime: null };
   setCloudConfig(config);
   closeModal('syncModal');
   showToast('正在同步...');
-  cloudSyncInit();
+  // On first setup, force pull to get cloud data (important for new computers)
+  cloudSyncInit(isFirstSetup);
 }
 function cloudSyncDisconnect() {
   if (!confirm('确定断开云同步吗？本地数据不会被删除，但换电脑后数据不再自动同步。')) return;
@@ -4880,7 +4892,7 @@ function cloudSyncDisconnect() {
   showToast('已断开云同步');
 }
 let cloudSyncBusy = false;
-async function cloudSyncPull() {
+async function cloudSyncPull(forcePull) {
   const config = getCloudConfig();
   if (!config || !config.token || cloudSyncBusy) return;
   cloudSyncBusy = true;
@@ -4903,7 +4915,9 @@ async function cloudSyncPull() {
       if (cloudContent[ws.id]) {
         const cloudTs = (cloudContent._meta && cloudContent._meta.workspaces && cloudContent._meta.workspaces[ws.id]) || '';
         const localTs = localStorage.getItem(LAST_MOD_PREFIX + ws.id) || '';
-        if (cloudTs > localTs) {
+        // Force pull: always overwrite local with cloud data
+        // Normal pull: only if cloud is newer than local
+        if (forcePull || cloudTs > localTs) {
           localStorage.setItem(DATA_PREFIX + ws.id, JSON.stringify(cloudContent[ws.id]));
           localStorage.setItem(LAST_MOD_PREFIX + ws.id, cloudTs);
           localChanged = true;
@@ -4920,7 +4934,7 @@ async function cloudSyncPull() {
       if (activePage) showPage(activePage);
       else showPage('dashboard');
       updateNavBadges();
-      showToast('已从云端同步最新数据');
+      showToast(forcePull ? '已从云端强制拉取数据' : '已从云端同步最新数据');
     }
     config.lastSyncStatus = 'synced';
     config.lastSyncTime = new Date().toISOString();
@@ -4957,17 +4971,18 @@ async function cloudSyncPush(isFirstPush) {
   cloudSyncBusy = true;
   if (!isFirstPush) updateSyncIndicator('syncing');
   try {
-    // If we don't have SHA, try to get it first
-    if (!config.fileSha) {
-      try {
-        const getUrl = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch;
-        const getResp = await fetch(getUrl, { headers: { 'Authorization': 'token ' + config.token } });
-        if (getResp.ok) {
-          const getFile = await getResp.json();
-          config.fileSha = getFile.sha;
-        }
-      } catch(e) { /* file may not exist yet */ }
-    }
+    // Always fetch the latest SHA before pushing to avoid conflicts
+    try {
+      const getUrl = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch;
+      const getResp = await fetch(getUrl, { headers: { 'Authorization': 'token ' + config.token } });
+      if (getResp.ok) {
+        const getFile = await getResp.json();
+        config.fileSha = getFile.sha;
+      } else if (getResp.status === 404) {
+        config.fileSha = null; // File doesn't exist yet, create new
+      }
+    } catch(e) { /* network error, try with existing SHA */ }
+
     const allData = { _meta: { lastSync: new Date().toISOString(), version: '2', workspaces: {} } };
     WORKSPACES.forEach(ws => {
       const raw = localStorage.getItem(DATA_PREFIX + ws.id);
@@ -4981,11 +4996,30 @@ async function cloudSyncPush(isFirstPush) {
     const body = { message: 'Sync data - ' + new Date().toLocaleString('zh-CN'), content: encoded, branch: config.branch };
     if (config.fileSha) body.sha = config.fileSha;
     const putUrl = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE;
-    const resp = await fetch(putUrl, {
+    let resp = await fetch(putUrl, {
       method: 'PUT',
       headers: { 'Authorization': 'token ' + config.token, 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
+
+    // If SHA mismatch (409), retry once with fresh SHA
+    if (resp.status === 409 || resp.status === 422) {
+      try {
+        const getUrl = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch;
+        const getResp = await fetch(getUrl, { headers: { 'Authorization': 'token ' + config.token } });
+        if (getResp.ok) {
+          const getFile = await getResp.json();
+          config.fileSha = getFile.sha;
+          body.sha = config.fileSha;
+          resp = await fetch(putUrl, {
+            method: 'PUT',
+            headers: { 'Authorization': 'token ' + config.token, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+        }
+      } catch(e) { /* retry failed */ }
+    }
+
     if (!resp.ok) {
       const errData = await resp.json().catch(() => ({}));
       throw new Error(errData.message || 'HTTP ' + resp.status);
@@ -5007,14 +5041,24 @@ async function cloudSyncPush(isFirstPush) {
     cloudSyncBusy = false;
   }
 }
-async function cloudSyncInit() {
+
+// Force pull: overwrite local with cloud data
+async function cloudSyncForcePull() {
+  const config = getCloudConfig();
+  if (!config || !config.token) { showToast('请先配置云同步'); return; }
+  if (!confirm('确定从云端强制拉取数据吗？本地未同步的修改将被覆盖。')) return;
+  closeModal('syncModal');
+  showToast('正在从云端拉取...');
+  await cloudSyncPull(true);
+}
+async function cloudSyncInit(forcePull) {
   const config = getCloudConfig();
   if (!config || !config.token) {
     updateSyncIndicator('offline');
     return;
   }
   updateSyncIndicator('syncing');
-  await cloudSyncPull();
+  await cloudSyncPull(forcePull);
 }
 
 // ========== Init ==========
