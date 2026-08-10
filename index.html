@@ -898,6 +898,42 @@ tr:hover td { background: #f8fafc; }
   padding: 10px 12px;
 }
 
+/* Cloud Sync */
+.sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+}
+.sync-indicator:hover { background: #f0f4f8; }
+.sync-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.sync-dot.synced { background: #059669; }
+.sync-dot.syncing { background: #f59e0b; animation: pulse 1s infinite; }
+.sync-dot.error { background: #dc2626; }
+.sync-dot.offline { background: #9ca3af; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+.sync-help-box {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #1e40af;
+  margin-bottom: 16px;
+}
+.sync-help-box a { color: #2563eb; text-decoration: underline; }
+
 /* Empty state */
 .empty {
   padding: 30px;
@@ -1970,6 +2006,10 @@ tr:hover td { background: #f8fafc; }
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="header-meta" id="header-date"></div>
+      <div class="sync-indicator" id="sync-indicator" onclick="openSyncModal()" title="点击设置云同步">
+        <span class="sync-dot offline" id="sync-dot"></span>
+        <span id="sync-text">未配置同步</span>
+      </div>
       <button class="btn btn-sm" onclick="restoreAutoBackup()" title="从自动备份恢复数据" style="font-size:12px;padding:4px 10px;">↩ 恢复备份</button>
       <button class="btn btn-sm" onclick="exportData()" title="导出所有数据到文件备份" style="font-size:12px;padding:4px 10px;">📥 导出备份</button>
       <label class="btn btn-sm" title="从备份文件恢复数据" style="font-size:12px;padding:4px 10px;cursor:pointer;margin:0;">📤 导入恢复
@@ -2411,6 +2451,53 @@ tr:hover td { background: #f8fafc; }
   </div>
 </div>
 
+<!-- Cloud Sync Modal -->
+<div class="modal-overlay" id="syncModal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <h3>☁ 云同步设置</h3>
+      <button class="modal-close" onclick="closeModal('syncModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="sync-help-box" id="sync-help-box">
+        <strong>为什么要设置云同步？</strong><br>
+        你的数据默认保存在浏览器本地，换电脑后数据不互通。设置云同步后，数据会自动同步到你的 GitHub 仓库，所有电脑都能访问同一份数据。<br><br>
+        <strong>设置步骤：</strong><br>
+        1. 点击下方链接创建 GitHub Token（需勾选 repo 权限）<br>
+        2. 复制 Token 粘贴到下方输入框<br>
+        3. 点击「保存并同步」<br>
+        <a href="https://github.com/settings/tokens/new?scopes=repo&description=ProjectTracker" target="_blank">👉 点这里创建 GitHub Token</a>
+      </div>
+      <div class="form-group">
+        <label>GitHub Token</label>
+        <input type="password" id="sync-token" placeholder="ghp_xxxxxxxxxxxx" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;">
+      </div>
+      <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label>仓库所有者</label>
+          <input type="text" id="sync-owner" placeholder="traesoloNB" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;">
+        </div>
+        <div>
+          <label>仓库名称</label>
+          <input type="text" id="sync-repo" placeholder="project-tracker" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>分支</label>
+        <input type="text" id="sync-branch" placeholder="master" value="master" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;">
+      </div>
+      <div id="sync-status-display" style="font-size:12px;color:var(--muted);padding:8px 0;"></div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:space-between;">
+      <button class="btn btn-sm" onclick="cloudSyncDisconnect()" id="sync-disconnect-btn" style="color:#dc2626;">断开同步</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="closeModal('syncModal')">取消</button>
+        <button class="btn btn-primary" onclick="cloudSyncSaveAndSync()">保存并同步</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 
 <script>
@@ -2468,6 +2555,9 @@ const WORKSPACES = [
 ];
 const WS_KEY = 'project_tracker_workspace';
 const DATA_PREFIX = 'project_tracker_data_v2_';
+const LAST_MOD_PREFIX = 'project_tracker_lastmod_';
+const CLOUD_SYNC_KEY = 'project_tracker_cloud_sync_config';
+const CLOUD_DATA_FILE = 'cloud-data.json';
 let currentWorkspace = localStorage.getItem(WS_KEY) || 'deen';
 
 // Migrate old single-workspace data to deen workspace
@@ -2498,6 +2588,7 @@ function saveData(d) {
     if (current) localStorage.setItem(BACKUP_PREFIX + currentWorkspace + '_1', current);
   }
   localStorage.setItem(key, JSON.stringify(d));
+  localStorage.setItem(LAST_MOD_PREFIX + currentWorkspace, new Date().toISOString());
 }
 
 function getDefaultData(ws) {
@@ -4474,6 +4565,215 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
+// ========== Cloud Sync ==========
+function getCloudConfig() {
+  const raw = localStorage.getItem(CLOUD_SYNC_KEY);
+  return raw ? JSON.parse(raw) : null;
+}
+function setCloudConfig(config) {
+  localStorage.setItem(CLOUD_SYNC_KEY, JSON.stringify(config));
+}
+function autoDetectRepo() {
+  const host = window.location.hostname || '';
+  const path = window.location.pathname || '';
+  if (host.endsWith('.github.io')) {
+    const owner = host.replace('.github.io', '');
+    const repo = path.split('/')[1] || '';
+    if (owner && repo) return { owner, repo, branch: 'master' };
+  }
+  return { owner: 'traesoloNB', repo: 'project-tracker', branch: 'master' };
+}
+function updateSyncIndicator(status, msg) {
+  const dot = document.getElementById('sync-dot');
+  const text = document.getElementById('sync-text');
+  const indicator = document.getElementById('sync-indicator');
+  if (!dot || !text) return;
+  const map = {
+    'offline': { cls: 'offline', label: '未配置同步' },
+    'syncing': { cls: 'syncing', label: '同步中...' },
+    'synced': { cls: 'synced', label: '已同步' },
+    'error': { cls: 'error', label: '同步失败' },
+  };
+  const info = map[status] || map['offline'];
+  dot.className = 'sync-dot ' + info.cls;
+  text.textContent = info.label;
+  if (indicator) indicator.title = msg || info.label;
+}
+function openSyncModal() {
+  const config = getCloudConfig();
+  const detected = autoDetectRepo();
+  document.getElementById('sync-token').value = config ? config.token : '';
+  document.getElementById('sync-owner').value = config ? config.owner : detected.owner;
+  document.getElementById('sync-repo').value = config ? config.repo : detected.repo;
+  document.getElementById('sync-branch').value = config ? config.branch : detected.branch;
+  const statusEl = document.getElementById('sync-status-display');
+  if (config && config.lastSyncTime) {
+    const d = new Date(config.lastSyncTime);
+    statusEl.innerHTML = '上次同步：' + d.toLocaleString('zh-CN') + (config.lastSyncStatus === 'error' ? ' <span style="color:#dc2626;">（失败：' + escHtml(config.lastSyncError || '') + '）</span>' : ' ✓');
+  } else {
+    statusEl.textContent = '';
+  }
+  document.getElementById('sync-disconnect-btn').style.display = config ? '' : 'none';
+  openModal('syncModal');
+}
+function cloudSyncSaveAndSync() {
+  const token = document.getElementById('sync-token').value.trim();
+  const owner = document.getElementById('sync-owner').value.trim();
+  const repo = document.getElementById('sync-repo').value.trim();
+  const branch = document.getElementById('sync-branch').value.trim() || 'master';
+  if (!token) { showToast('请输入 GitHub Token'); return; }
+  if (!owner || !repo) { showToast('请填写仓库信息'); return; }
+  const config = { token, owner, repo, branch, fileSha: null, lastSyncStatus: null, lastSyncTime: null };
+  setCloudConfig(config);
+  closeModal('syncModal');
+  showToast('正在同步...');
+  cloudSyncInit();
+}
+function cloudSyncDisconnect() {
+  if (!confirm('确定断开云同步吗？本地数据不会被删除，但换电脑后数据不再自动同步。')) return;
+  localStorage.removeItem(CLOUD_SYNC_KEY);
+  updateSyncIndicator('offline');
+  closeModal('syncModal');
+  showToast('已断开云同步');
+}
+let cloudSyncBusy = false;
+async function cloudSyncPull() {
+  const config = getCloudConfig();
+  if (!config || !config.token || cloudSyncBusy) return;
+  cloudSyncBusy = true;
+  updateSyncIndicator('syncing');
+  try {
+    const url = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch;
+    const resp = await fetch(url, { headers: { 'Authorization': 'token ' + config.token } });
+    if (resp.status === 404) {
+      cloudSyncBusy = false;
+      await cloudSyncPush(true);
+      return;
+    }
+    if (!resp.ok) throw new Error('GitHub API: ' + resp.status);
+    const fileData = await resp.json();
+    config.fileSha = fileData.sha;
+    setCloudConfig(config);
+    const cloudContent = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
+    let localChanged = false;
+    WORKSPACES.forEach(ws => {
+      if (cloudContent[ws.id]) {
+        const cloudTs = (cloudContent._meta && cloudContent._meta.workspaces && cloudContent._meta.workspaces[ws.id]) || '';
+        const localTs = localStorage.getItem(LAST_MOD_PREFIX + ws.id) || '';
+        if (cloudTs > localTs) {
+          localStorage.setItem(DATA_PREFIX + ws.id, JSON.stringify(cloudContent[ws.id]));
+          localStorage.setItem(LAST_MOD_PREFIX + ws.id, cloudTs);
+          localChanged = true;
+        }
+      }
+    });
+    if (localChanged) {
+      data = getData();
+      if (!data.plans) data.plans = [];
+      data.projects.forEach(p => { if (!p.milestones) p.milestones = []; });
+      data.follows.forEach(f => { if (!f.milestoneId) f.milestoneId = null; });
+      const activePageEl = Array.from(document.querySelectorAll('.page-content')).find(el => el.style.display !== 'none');
+      const activePage = activePageEl ? activePageEl.id.replace('page-', '') : 'dashboard';
+      if (activePage) showPage(activePage);
+      else showPage('dashboard');
+      updateNavBadges();
+      showToast('已从云端同步最新数据');
+    }
+    config.lastSyncStatus = 'synced';
+    config.lastSyncTime = new Date().toISOString();
+    config.lastSyncError = null;
+    setCloudConfig(config);
+    updateSyncIndicator('synced');
+    // After pull, also push if local is newer for any workspace
+    let needPush = false;
+    WORKSPACES.forEach(ws => {
+      const localTs = localStorage.getItem(LAST_MOD_PREFIX + ws.id) || '';
+      const cloudTs = (cloudContent._meta && cloudContent._meta.workspaces && cloudContent._meta.workspaces[ws.id]) || '';
+      if (localTs > cloudTs) needPush = true;
+    });
+    cloudSyncBusy = false;
+    if (needPush) await cloudSyncPush();
+  } catch(err) {
+    config.lastSyncStatus = 'error';
+    config.lastSyncError = err.message;
+    setCloudConfig(config);
+    updateSyncIndicator('error', err.message);
+    cloudSyncBusy = false;
+  }
+}
+let cloudPushTimer = null;
+function cloudSyncPushDebounced() {
+  const config = getCloudConfig();
+  if (!config || !config.token) return;
+  if (cloudPushTimer) clearTimeout(cloudPushTimer);
+  cloudPushTimer = setTimeout(() => cloudSyncPush(), 3000);
+}
+async function cloudSyncPush(isFirstPush) {
+  const config = getCloudConfig();
+  if (!config || !config.token || cloudSyncBusy) return;
+  cloudSyncBusy = true;
+  if (!isFirstPush) updateSyncIndicator('syncing');
+  try {
+    // If we don't have SHA, try to get it first
+    if (!config.fileSha) {
+      try {
+        const getUrl = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch;
+        const getResp = await fetch(getUrl, { headers: { 'Authorization': 'token ' + config.token } });
+        if (getResp.ok) {
+          const getFile = await getResp.json();
+          config.fileSha = getFile.sha;
+        }
+      } catch(e) { /* file may not exist yet */ }
+    }
+    const allData = { _meta: { lastSync: new Date().toISOString(), version: '2', workspaces: {} } };
+    WORKSPACES.forEach(ws => {
+      const raw = localStorage.getItem(DATA_PREFIX + ws.id);
+      if (raw) {
+        allData[ws.id] = JSON.parse(raw);
+        allData._meta.workspaces[ws.id] = localStorage.getItem(LAST_MOD_PREFIX + ws.id) || new Date().toISOString();
+      }
+    });
+    const contentStr = JSON.stringify(allData);
+    const encoded = btoa(unescape(encodeURIComponent(contentStr)));
+    const body = { message: 'Sync data - ' + new Date().toLocaleString('zh-CN'), content: encoded, branch: config.branch };
+    if (config.fileSha) body.sha = config.fileSha;
+    const putUrl = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE;
+    const resp = await fetch(putUrl, {
+      method: 'PUT',
+      headers: { 'Authorization': 'token ' + config.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      throw new Error(errData.message || 'HTTP ' + resp.status);
+    }
+    const result = await resp.json();
+    config.fileSha = result.content.sha;
+    config.lastSyncStatus = 'synced';
+    config.lastSyncTime = new Date().toISOString();
+    config.lastSyncError = null;
+    setCloudConfig(config);
+    updateSyncIndicator('synced');
+    if (isFirstPush) showToast('数据已上传到云端，其他电脑现在可以同步了');
+    cloudSyncBusy = false;
+  } catch(err) {
+    config.lastSyncStatus = 'error';
+    config.lastSyncError = err.message;
+    setCloudConfig(config);
+    updateSyncIndicator('error', err.message);
+    cloudSyncBusy = false;
+  }
+}
+async function cloudSyncInit() {
+  const config = getCloudConfig();
+  if (!config || !config.token) {
+    updateSyncIndicator('offline');
+    return;
+  }
+  updateSyncIndicator('syncing');
+  await cloudSyncPull();
+}
+
 // ========== Init ==========
 updateWorkspaceUI();
 showPage('dashboard');
@@ -4497,11 +4797,12 @@ function updateHeaderDate() {
   if (el) el.textContent = d.getFullYear() + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日 星期' + weekdays[d.getDay()];
 }
 
-// Override saveData to also update badges
+// Override saveData to also update badges + cloud sync
 const originalSaveData = saveData;
 saveData = function(d) {
   originalSaveData(d);
   updateNavBadges();
+  cloudSyncPushDebounced();
 };
 
 // Init
@@ -4510,6 +4811,7 @@ document.addEventListener('DOMContentLoaded', function() {
   updateHeaderDate();
   updateNavBadges();
   showPage('calendar');
+  cloudSyncInit();
 });
 </script>
 
