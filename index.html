@@ -2345,7 +2345,11 @@ tr:hover td { background: #f8fafc; }
       </div>
       <div class="form-group">
         <label>关联流程节点</label>
-        <select id="follow-milestone"></select>
+        <select id="follow-milestone" onchange="populateFollowTodos()"></select>
+      </div>
+      <div class="form-group">
+        <label>关联待办事项</label>
+        <select id="follow-todo"></select>
       </div>
       <div class="form-group">
         <label>今天做了什么</label>
@@ -3631,6 +3635,25 @@ function populateFollowMilestones() {
     const dateText = formatMilestoneDate(m);
     return `<option value="${m.id}">${escHtml(m.title)}（${dateText}）</option>`;
   }).join('');
+  populateFollowTodos();
+}
+function populateFollowTodos() {
+  const sel = document.getElementById('follow-todo');
+  if (!sel) return;
+  const projId = document.getElementById('follow-project').value;
+  const todos = data.todos.filter(t => String(t.projectId) === String(projId) && t.status !== '已取消' && t.status !== '已完成');
+  if (todos.length === 0) {
+    sel.innerHTML = '<option value="">该项目暂无待办</option>';
+    sel.disabled = true;
+  } else {
+    sel.disabled = false;
+    sel.innerHTML = '<option value="">不关联待办</option>' + todos.map(t => {
+      let label = t.title;
+      if (t.priority) label += ' [' + t.priority + ']';
+      if (t.deadline) label += ' (截止' + t.deadline + ')';
+      return `<option value="${t.id}">${escHtml(label)}</option>`;
+    }).join('');
+  }
 }
 function populateProjectFilter() {
   const sel = document.getElementById('filter-project');
@@ -4357,6 +4380,7 @@ function renderFollows() {
         <div class="follow-tl-date">${dateLabel} <span onclick="jumpToCalendar('${f.date}')" style="cursor:pointer;color:#2563eb;font-size:12px;margin-left:4px;" title="在日历中查看这天">📅</span> <span onclick="deleteFollow(${f.id})" style="cursor:pointer;color:#dc2626;font-size:12px;float:right;" title="删除记录">🗑</span></div>
         <div class="follow-tl-content">
           <strong>做了什么：</strong>${f.done || '—'}<br>
+          ${f.todoId ? (() => { const ft = data.todos.find(t => String(t.id) === String(f.todoId)); return ft ? `<strong style="color:#7c3aed">关联待办：</strong>${escHtml(ft.title)}${ft.priority ? ' [' + ft.priority + ']' : ''}<br>` : ''; })() : ''}
           ${f.block ? `<strong style="color:#dc2626">阻碍：</strong>${f.block}<br>` : ''}
           ${f.need ? `<strong>需要什么：</strong>${f.need}<br>` : ''}
           ${f.next ? `<strong>下一步：</strong>${f.next}` : ''}
@@ -4530,6 +4554,7 @@ function renderProjectDetail(project, filterDate) {
         <div class="pd-tl-date">${dateLabel}${ms ? ' · ' + escHtml(ms.title) : ''} <span onclick="jumpToCalendar('${f.date}')" style="cursor:pointer;color:#2563eb;font-size:12px;margin-left:4px;" title="在日历中查看">📅</span> <span onclick="deleteFollow(${f.id})" style="cursor:pointer;color:#dc2626;font-size:12px;float:right;" title="删除">🗑</span></div>
         <div class="pd-tl-body">
           <strong>做了什么：</strong>${f.done || '—'}<br>
+          ${f.todoId ? (() => { const ft = data.todos.find(t => String(t.id) === String(f.todoId)); return ft ? `<strong style="color:#7c3aed">关联待办：</strong>${escHtml(ft.title)}${ft.priority ? ' [' + ft.priority + ']' : ''}<br>` : ''; })() : ''}
           ${f.block ? `<strong style="color:#dc2626">阻碍：</strong>${f.block}<br>` : ''}
           ${f.need ? `<strong>需要什么：</strong>${f.need}<br>` : ''}
           ${f.next ? `<strong>下一步：</strong>${f.next}` : ''}
@@ -4733,8 +4758,10 @@ function saveFollow() {
   if (!date || !done) { showToast('请填写日期和做了什么'); return; }
   const milestoneIdRaw = document.getElementById('follow-milestone').value;
   const milestoneId = milestoneIdRaw ? milestoneIdRaw : null;
+  const todoIdRaw = document.getElementById('follow-todo').value;
+  const todoId = todoIdRaw ? todoIdRaw : null;
   data.follows.push({
-    id: Date.now(), date, projectId, milestoneId, done,
+    id: Date.now(), date, projectId, milestoneId, todoId, done,
     block: document.getElementById('follow-block').value.trim(),
     need: document.getElementById('follow-need').value.trim(),
     next: document.getElementById('follow-next').value.trim(),
