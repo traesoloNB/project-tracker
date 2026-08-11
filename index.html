@@ -8,6 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>工作台 — 项目管理中心</title>
+<script>window.__SYNC_V3__ = true;</script>
 <style>
 :root {
   --sidebar-bg: #111827;
@@ -5156,6 +5157,16 @@ saveData = function(d) {
 
 // Init
 document.addEventListener('DOMContentLoaded', async function() {
+  // Auto cache-bust: if this is old cached code without v3 marker, force reload with version param
+  if (!window.__SYNC_V3__) {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.get('v')) {
+      url.searchParams.set('v', '3');
+      window.location.replace(url.toString());
+      return;
+    }
+  }
+
   updateWorkspaceUI();
   updateHeaderDate();
   updateNavBadges();
