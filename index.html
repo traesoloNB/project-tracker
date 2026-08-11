@@ -2591,6 +2591,7 @@ tr:hover td { background: #f8fafc; }
         <button class="btn btn-sm" onclick="cloudSyncForcePull()" style="width:100%;color:#2563eb;border:1px solid #2563eb;">⬇ 强制拉取云端数据（覆盖本地）</button>
         <p style="font-size:11px;color:var(--muted);margin-top:4px;">如果换电脑后数据没同步，点此按钮从云端强制拉取最新数据。</p>
       </div>
+      <div style="font-size:10px;color:var(--muted);text-align:right;padding-top:4px;">同步引擎 v3.0 (Git Data API)</div>
     </div>
     <div class="modal-footer" style="display:flex;justify-content:space-between;">
       <button class="btn btn-sm" onclick="cloudSyncDisconnect()" id="sync-disconnect-btn" style="color:#dc2626;">断开同步</button>
@@ -4892,24 +4893,96 @@ function cloudSyncDisconnect() {
   showToast('已断开云同步');
 }
 let cloudSyncBusy = false;
+// ========== Git Data API approach (bypasses SHA mismatch issues) ==========
+// Instead of using the Contents API (which requires exact file SHA matching),
+// we use the Git Data API: create blob → create tree → create commit → update ref
+// This is much more reliable for frequent updates.
+
+async function gitDataReadFile(config) {
+  // Read file content via Contents API (read-only, no SHA issues)
+  const url = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch + '&t=' + Date.now();
+  const resp = await fetch(url, { headers: { 'Authorization': 'token ' + config.token, 'Cache-Control': 'no-cache' } });
+  if (resp.status === 404) return null;
+  if (!resp.ok) throw new Error('GitHub API: ' + resp.status);
+  const fileData = await resp.json();
+  return fileData;
+}
+
+async function gitDataPushFile(config, contentStr) {
+  const encoded = btoa(unescape(encodeURIComponent(contentStr)));
+  const apiBase = 'https://api.github.com/repos/' + config.owner + '/' + config.repo;
+  const authHeader = { 'Authorization': 'token ' + config.token, 'Content-Type': 'application/json' };
+
+  // 1. Get current ref (branch HEAD commit SHA)
+  const refResp = await fetch(apiBase + '/git/refs/heads/' + config.branch, { headers: authHeader });
+  if (!refResp.ok) throw new Error('获取分支引用失败: ' + refResp.status);
+  const refData = await refResp.json();
+  const commitSha = refData.object.sha;
+
+  // 2. Get the commit to find its tree SHA
+  const commitResp = await fetch(apiBase + '/git/commits/' + commitSha, { headers: authHeader });
+  if (!commitResp.ok) throw new Error('获取提交信息失败: ' + commitResp.status);
+  const commitData = await commitResp.json();
+  const treeSha = commitData.tree.sha;
+
+  // 3. Create a new blob with the data
+  const blobResp = await fetch(apiBase + '/git/blobs', {
+    method: 'POST', headers: authHeader,
+    body: JSON.stringify({ content: encoded, encoding: 'base64' })
+  });
+  if (!blobResp.ok) throw new Error('创建Blob失败: ' + blobResp.status);
+  const blobData = await blobResp.json();
+  const blobSha = blobData.sha;
+
+  // 4. Create a new tree with the blob (replacing the file)
+  const treeResp = await fetch(apiBase + '/git/trees', {
+    method: 'POST', headers: authHeader,
+    body: JSON.stringify({
+      base_tree: treeSha,
+      tree: [{ path: CLOUD_DATA_FILE, mode: '100644', type: 'blob', sha: blobSha }]
+    })
+  });
+  if (!treeResp.ok) throw new Error('创建Tree失败: ' + treeResp.status);
+  const newTreeData = await treeResp.json();
+
+  // 5. Create a new commit
+  const newCommitResp = await fetch(apiBase + '/git/commits', {
+    method: 'POST', headers: authHeader,
+    body: JSON.stringify({
+      message: 'Sync data - ' + new Date().toLocaleString('zh-CN'),
+      tree: newTreeData.sha,
+      parents: [commitSha]
+    })
+  });
+  if (!newCommitResp.ok) throw new Error('创建Commit失败: ' + newCommitResp.status);
+  const newCommitData = await newCommitResp.json();
+
+  // 6. Update the ref to point to the new commit (force: true to handle non-fast-forward)
+  const updateRefResp = await fetch(apiBase + '/git/refs/heads/' + config.branch, {
+    method: 'PATCH', headers: authHeader,
+    body: JSON.stringify({ sha: newCommitData.sha, force: true })
+  });
+  if (!updateRefResp.ok) {
+    const errData = await updateRefResp.json().catch(() => ({}));
+    throw new Error('更新分支引用失败: ' + (errData.message || updateRefResp.status));
+  }
+  return newCommitData.sha;
+}
+
 async function cloudSyncPull(forcePull) {
   const config = getCloudConfig();
   if (!config || !config.token || cloudSyncBusy) return;
   cloudSyncBusy = true;
-  // Cancel any pending debounced push to avoid conflict
   if (cloudPushTimer) { clearTimeout(cloudPushTimer); cloudPushTimer = null; }
   updateSyncIndicator('syncing');
   try {
-    // Add cache-busting timestamp to avoid GitHub CDN returning stale SHA
-    const url = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch + '&t=' + Date.now();
-    const resp = await fetch(url, { headers: { 'Authorization': 'token ' + config.token, 'Cache-Control': 'no-cache' } });
-    if (resp.status === 404) {
+    const fileData = await gitDataReadFile(config);
+    if (!fileData) {
+      // Cloud has no data yet, push local data
       cloudSyncBusy = false;
       await cloudSyncPush(true);
       return;
     }
-    if (!resp.ok) throw new Error('GitHub API: ' + resp.status);
-    const fileData = await resp.json();
     config.fileSha = fileData.sha;
     setCloudConfig(config);
     const cloudContent = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
@@ -4918,8 +4991,6 @@ async function cloudSyncPull(forcePull) {
       if (cloudContent[ws.id]) {
         const cloudTs = (cloudContent._meta && cloudContent._meta.workspaces && cloudContent._meta.workspaces[ws.id]) || '';
         const localTs = localStorage.getItem(LAST_MOD_PREFIX + ws.id) || '';
-        // Force pull: always overwrite local with cloud data
-        // Normal pull: only if cloud is newer than local
         if (forcePull || cloudTs > localTs) {
           localStorage.setItem(DATA_PREFIX + ws.id, JSON.stringify(cloudContent[ws.id]));
           localStorage.setItem(LAST_MOD_PREFIX + ws.id, cloudTs);
@@ -4944,12 +5015,10 @@ async function cloudSyncPull(forcePull) {
     config.lastSyncError = null;
     setCloudConfig(config);
     updateSyncIndicator('synced');
-    // After force pull, skip push — local data IS cloud data now
     if (forcePull) {
       cloudSyncBusy = false;
       return;
     }
-    // After normal pull, also push if local is newer for any workspace
     let needPush = false;
     WORKSPACES.forEach(ws => {
       const localTs = localStorage.getItem(LAST_MOD_PREFIX + ws.id) || '';
@@ -4988,52 +5057,10 @@ async function cloudSyncPush(isFirstPush) {
       }
     });
     const contentStr = JSON.stringify(allData);
-    const encoded = btoa(unescape(encodeURIComponent(contentStr)));
-    const putUrl = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE;
 
-    // Try up to 4 times (initial + 3 retries) to handle SHA mismatch
-    let resp = null;
-    let lastErr = '';
-    for (let attempt = 0; attempt < 4; attempt++) {
-      // Fetch latest SHA with cache-busting to avoid stale CDN response
-      try {
-        const getUrl = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch + '&t=' + Date.now();
-        const getResp = await fetch(getUrl, { headers: { 'Authorization': 'token ' + config.token, 'Cache-Control': 'no-cache' } });
-        if (getResp.ok) {
-          const getFile = await getResp.json();
-          config.fileSha = getFile.sha;
-        } else if (getResp.status === 404) {
-          config.fileSha = null;
-        }
-      } catch(e) { /* network error, try with existing SHA */ }
+    // Use Git Data API — no SHA matching needed!
+    await gitDataPushFile(config, contentStr);
 
-      const body = { message: 'Sync data - ' + new Date().toLocaleString('zh-CN'), content: encoded, branch: config.branch };
-      if (config.fileSha) body.sha = config.fileSha;
-      resp = await fetch(putUrl, {
-        method: 'PUT',
-        headers: { 'Authorization': 'token ' + config.token, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-
-      if (resp.ok) break; // Success!
-
-      // If SHA mismatch (422) or conflict (409), wait 1s and retry
-      if (resp.status === 422 || resp.status === 409) {
-        const errData = await resp.json().catch(() => ({}));
-        lastErr = errData.message || 'HTTP ' + resp.status;
-        if (attempt < 3) await new Promise(r => setTimeout(r, 1000));
-      } else {
-        // Non-retryable error
-        const errData = await resp.json().catch(() => ({}));
-        throw new Error(errData.message || 'HTTP ' + resp.status);
-      }
-    }
-
-    if (!resp || !resp.ok) {
-      throw new Error(lastErr || '推送失败，请稍后重试');
-    }
-    const result = await resp.json();
-    config.fileSha = result.content.sha;
     config.lastSyncStatus = 'synced';
     config.lastSyncTime = new Date().toISOString();
     config.lastSyncError = null;
