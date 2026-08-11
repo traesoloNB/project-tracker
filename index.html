@@ -706,62 +706,6 @@ tr:hover td { background: #f8fafc; }
 }
 .follow-tl-content { font-size: 13px; color: var(--ink); line-height: 1.7; }
 
-/* Daily Todo Checklist */
-.daily-todo-card {
-  background: var(--surface);
-  border-radius: 12px;
-  border: 1px solid var(--rule);
-  padding: 16px;
-  margin-top: 20px;
-}
-.daily-todo-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--rule);
-}
-.daily-todo-list { display: flex; flex-direction: column; gap: 2px; }
-.daily-todo-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  transition: background 0.15s;
-}
-.daily-todo-row:hover { background: var(--bg); }
-.daily-todo-row.done .daily-todo-title { text-decoration: line-through; color: var(--muted); }
-.daily-todo-row.done { background: #ecfdf5; border-radius: 8px; }
-.daily-todo-check { position: relative; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; }
-.daily-todo-check input { position: absolute; opacity: 0; width: 20px; height: 20px; cursor: pointer; }
-.daily-todo-box {
-  display: inline-block;
-  width: 20px; height: 20px;
-  border: 2px solid #d1d5db;
-  border-radius: 5px;
-  transition: all 0.15s;
-}
-.daily-todo-check input:checked + .daily-todo-box {
-  background: #059669;
-  border-color: #059669;
-}
-.daily-todo-check input:checked + .daily-todo-box::after {
-  content: '';
-  position: absolute;
-  left: 6px; top: 2px;
-  width: 6px; height: 11px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-.daily-todo-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.daily-todo-title { font-size: 13px; color: var(--ink); font-weight: 500; }
-.daily-todo-meta { display: flex; gap: 10px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
-
 /* Daily Follow Page Layout */
 .daily-layout {
   display: grid;
@@ -2268,7 +2212,6 @@ tr:hover td { background: #f8fafc; }
           <button class="btn btn-sm" onclick="clearFollowFilters()">清除筛选</button>
         </div>
         <div id="follow-list"></div>
-        <div id="daily-todo-section"></div>
       </div>
       <div class="daily-sidebar">
         <div class="follow-cal-card">
@@ -4369,7 +4312,6 @@ function renderFollows() {
       return;
     }
     renderProjectDetail(project, filterDate);
-    renderDailyTodos(filterProj, filterDate);
     return;
   }
 
@@ -4435,9 +4377,6 @@ function renderFollows() {
       </div>
     </div>`;
   }).join('');
-
-  // Render todo checklist for the daily page
-  renderDailyTodos(filterProj, filterDate);
 }
 
 // ===== Project Detail View for daily follow-up page =====
@@ -4604,82 +4543,6 @@ function renderProjectDetail(project, filterDate) {
   }
 
   list.innerHTML = overviewHtml + flowHtml + todosHtml + timelineHtml;
-}
-
-// ===== Daily Todo Checklist (in follow-up page) =====
-function renderDailyTodos(filterProj, filterDate) {
-  const container = document.getElementById('daily-todo-section');
-  if (!container) return;
-  const today = new Date();
-  const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
-
-  // Filter todos
-  let todos = [...data.todos];
-  if (filterProj) todos = todos.filter(t => String(t.projectId) === String(filterProj));
-  // If date filter is set, show todos that were relevant by that date (deadline <= filterDate or no deadline)
-  // Otherwise show all active todos
-  todos = todos.filter(t => t.status !== '已取消');
-  todos.sort((a, b) => {
-    // Not-done first, then done
-    const aDone = a.status === '已完成' ? 1 : 0;
-    const bDone = b.status === '已完成' ? 1 : 0;
-    if (aDone !== bDone) return aDone - bDone;
-    const pOrder = { 'P0': 0, 'P1': 1, 'P2': 2, 'P3': 3 };
-    if (pOrder[a.priority] !== pOrder[b.priority]) return pOrder[a.priority] - pOrder[b.priority];
-    return new Date(a.deadline || '9999-12-31') - new Date(b.deadline || '9999-12-31');
-  });
-
-  if (todos.length === 0) {
-    container.innerHTML = '';
-    return;
-  }
-
-  const activeTodos = todos.filter(t => t.status !== '已完成');
-  const doneTodos = todos.filter(t => t.status === '已完成');
-
-  const todoChecklist = todos.map(t => {
-    const proj = data.projects.find(p => String(p.id) === String(t.projectId));
-    const projName = proj ? proj.company + (proj.client ? '-' + proj.client : '') : '';
-    const isDone = t.status === '已完成';
-    const dl = t.deadline ? Math.ceil((new Date(t.deadline + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / (1000 * 60 * 60 * 24)) : null;
-    let dueText = '', dueColor = 'var(--muted)';
-    if (!isDone && dl !== null) {
-      if (dl < 0) { dueText = '逾期' + Math.abs(dl) + '天'; dueColor = '#dc2626'; }
-      else if (dl === 0) { dueText = '今天'; dueColor = '#dc2626'; }
-      else if (dl <= 3) { dueText = '剩' + dl + '天'; dueColor = '#ea580c'; }
-      else if (dl <= 14) { dueText = '剩' + dl + '天'; dueColor = '#ca8a04'; }
-      else dueText = '剩' + dl + '天';
-    }
-    const nextStatus = t.status === '未开始' ? '进行中' : t.status === '进行中' ? '已完成' : '未开始';
-    const priorityColors = { 'P0': '#dc2626', 'P1': '#ea580c', 'P2': '#ca8a04', 'P3': '#9ca3af' };
-    const pColor = priorityColors[t.priority] || '#9ca3af';
-    return `<div class="daily-todo-row ${isDone ? 'done' : ''}">
-      <label class="daily-todo-check" onclick="event.stopPropagation();">
-        <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleDailyTodo('${t.id}', '${nextStatus}')">
-        <span class="daily-todo-box"></span>
-      </label>
-      <div class="daily-todo-info">
-        <span class="daily-todo-title">${escHtml(t.title)}</span>
-        <span class="daily-todo-meta">
-          ${projName ? '<span>' + escHtml(projName) + '</span>' : ''}
-          ${t.priority ? '<span style="color:' + pColor + ';font-weight:600;">' + t.priority + '</span>' : ''}
-          ${dueText ? '<span style="color:' + dueColor + ';">' + dueText + '</span>' : ''}
-        </span>
-      </div>
-    </div>`;
-  }).join('');
-
-  container.innerHTML = `<div class="daily-todo-card">
-    <div class="daily-todo-header">
-      <span>✅ 待办事项${activeTodos.length > 0 ? '（<span style="color:#dc2626;font-weight:700;">' + activeTodos.length + '</span>项待处理）' : '（全部完成 🎉）'}</span>
-      <span style="font-size:11px;color:var(--muted);">勾选即可标记完成</span>
-    </div>
-    <div class="daily-todo-list">${todoChecklist}</div>
-  </div>`;
-}
-
-function toggleDailyTodo(id, nextStatus) {
-  updateTodoStatus(id, nextStatus);
 }
 
 function jumpToProjectMilestone(projId, msIdx) {
@@ -4920,16 +4783,7 @@ function saveTodo() {
 }
 function updateTodoStatus(id, status) {
   const todo = data.todos.find(t => String(t.id) === String(id));
-  if (todo) { todo.status = status; saveData(data); renderTodos(); renderOverview(); renderFlowBoard();
-    // Also refresh daily follow-up todo section if visible
-    const dailyTodoEl = document.getElementById('daily-todo-section');
-    if (dailyTodoEl && dailyTodoEl.innerHTML) {
-      const filterProj = document.getElementById('filter-project') ? document.getElementById('filter-project').value : '';
-      const filterDate = document.getElementById('filter-date') ? document.getElementById('filter-date').value : '';
-      renderDailyTodos(filterProj, filterDate);
-    }
-    if (status === '已完成') showToast('已完成！');
-  }
+  if (todo) { todo.status = status; saveData(data); renderTodos(); renderOverview(); renderFlowBoard(); if (status === '已完成') showToast('已完成！'); }
 }
 function deleteTodo(id) {
   if (!confirm('确定删除这条待办？')) return;
