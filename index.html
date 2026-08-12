@@ -2116,7 +2116,7 @@ tr:hover td { background: #f8fafc; }
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="header-meta" id="header-date"></div>
-      <span id="version-badge" style="font-size:10px;background:#dbeafe;color:#2563eb;padding:2px 6px;border-radius:4px;font-weight:600;display:none;">v3.0</span>
+      <span id="version-badge" style="font-size:10px;background:#dbeafe;color:#2563eb;padding:2px 6px;border-radius:4px;font-weight:600;display:none;">v3.1</span>
       <div class="sync-indicator" id="sync-indicator" onclick="openSyncModal()" title="点击设置云同步">
         <span class="sync-dot offline" id="sync-dot"></span>
         <span id="sync-text">未配置同步</span>
@@ -2597,7 +2597,7 @@ tr:hover td { background: #f8fafc; }
         <button class="btn btn-sm" onclick="cloudSyncForcePull()" style="width:100%;color:#2563eb;border:1px solid #2563eb;">⬇ 强制拉取云端数据（覆盖本地）</button>
         <p style="font-size:11px;color:var(--muted);margin-top:4px;">如果换电脑后数据没同步，点此按钮从云端强制拉取最新数据。</p>
       </div>
-      <div style="font-size:10px;color:var(--muted);text-align:right;padding-top:4px;">同步引擎 v3.0 (Git Data API)</div>
+      <div style="font-size:10px;color:var(--muted);text-align:right;padding-top:4px;">同步引擎 v3.1 (简易云端存储)</div>
     </div>
     <div class="modal-footer" style="display:flex;justify-content:space-between;">
       <button class="btn btn-sm" onclick="cloudSyncDisconnect()" id="sync-disconnect-btn" style="color:#dc2626;">断开同步</button>
@@ -4904,15 +4904,11 @@ function cloudSyncSaveAndSync() {
   const branch = document.getElementById('sync-branch').value.trim() || 'master';
   if (!token) { showToast('请输入 GitHub Token'); return; }
   if (!owner || !repo) { showToast('请填写仓库信息'); return; }
-  // Check if this is a first-time setup (no previous config)
-  const prevConfig = getCloudConfig();
-  const isFirstSetup = !prevConfig || !prevConfig.token;
   const config = { token, owner, repo, branch, fileSha: null, lastSyncStatus: null, lastSyncTime: null };
   setCloudConfig(config);
   closeModal('syncModal');
-  showToast('正在同步...');
-  // On first setup, force pull to get cloud data (important for new computers)
-  cloudSyncInit(isFirstSetup);
+  showToast('正在连接云端...');
+  cloudSyncInit();
 }
 function cloudSyncDisconnect() {
   if (!confirm('确定断开云同步吗？本地数据不会被删除，但换电脑后数据不再自动同步。')) return;
@@ -4922,163 +4918,81 @@ function cloudSyncDisconnect() {
   showToast('已断开云同步');
 }
 let cloudSyncBusy = false;
-// ========== Git Data API approach (bypasses SHA mismatch issues) ==========
-// Instead of using the Contents API (which requires exact file SHA matching),
-// we use the Git Data API: create blob → create tree → create commit → update ref
-// This is much more reliable for frequent updates.
+// ========== Simple Cloud Storage (single user) ==========
+// Just two operations:
+// 1. loadFromCloud(): on page open, overwrite local with cloud data
+// 2. saveToCloud(): on every data change, overwrite cloud with local data
+// No timestamp comparison, no conflict resolution — single user, simple.
 
-async function gitDataReadFile(config) {
-  // Read file content via Contents API (read-only, no SHA issues)
-  const url = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch + '&t=' + Date.now();
-  const resp = await fetch(url, { headers: { 'Authorization': 'token ' + config.token, 'Cache-Control': 'no-cache' } });
-  if (resp.status === 404) return null;
-  if (!resp.ok) throw new Error('GitHub API: ' + resp.status);
-  const fileData = await resp.json();
-  return fileData;
-}
-
-async function gitDataPushFile(config, contentStr) {
-  const encoded = btoa(unescape(encodeURIComponent(contentStr)));
-  const apiBase = 'https://api.github.com/repos/' + config.owner + '/' + config.repo;
-  const authHeader = { 'Authorization': 'token ' + config.token, 'Content-Type': 'application/json' };
-
-  // 1. Get current ref (branch HEAD commit SHA)
-  const refResp = await fetch(apiBase + '/git/refs/heads/' + config.branch, { headers: authHeader });
-  if (!refResp.ok) throw new Error('获取分支引用失败: ' + refResp.status);
-  const refData = await refResp.json();
-  const commitSha = refData.object.sha;
-
-  // 2. Get the commit to find its tree SHA
-  const commitResp = await fetch(apiBase + '/git/commits/' + commitSha, { headers: authHeader });
-  if (!commitResp.ok) throw new Error('获取提交信息失败: ' + commitResp.status);
-  const commitData = await commitResp.json();
-  const treeSha = commitData.tree.sha;
-
-  // 3. Create a new blob with the data
-  const blobResp = await fetch(apiBase + '/git/blobs', {
-    method: 'POST', headers: authHeader,
-    body: JSON.stringify({ content: encoded, encoding: 'base64' })
-  });
-  if (!blobResp.ok) throw new Error('创建Blob失败: ' + blobResp.status);
-  const blobData = await blobResp.json();
-  const blobSha = blobData.sha;
-
-  // 4. Create a new tree with the blob (replacing the file)
-  const treeResp = await fetch(apiBase + '/git/trees', {
-    method: 'POST', headers: authHeader,
-    body: JSON.stringify({
-      base_tree: treeSha,
-      tree: [{ path: CLOUD_DATA_FILE, mode: '100644', type: 'blob', sha: blobSha }]
-    })
-  });
-  if (!treeResp.ok) throw new Error('创建Tree失败: ' + treeResp.status);
-  const newTreeData = await treeResp.json();
-
-  // 5. Create a new commit
-  const newCommitResp = await fetch(apiBase + '/git/commits', {
-    method: 'POST', headers: authHeader,
-    body: JSON.stringify({
-      message: 'Sync data - ' + new Date().toLocaleString('zh-CN'),
-      tree: newTreeData.sha,
-      parents: [commitSha]
-    })
-  });
-  if (!newCommitResp.ok) throw new Error('创建Commit失败: ' + newCommitResp.status);
-  const newCommitData = await newCommitResp.json();
-
-  // 6. Update the ref to point to the new commit (force: true to handle non-fast-forward)
-  const updateRefResp = await fetch(apiBase + '/git/refs/heads/' + config.branch, {
-    method: 'PATCH', headers: authHeader,
-    body: JSON.stringify({ sha: newCommitData.sha, force: true })
-  });
-  if (!updateRefResp.ok) {
-    const errData = await updateRefResp.json().catch(() => ({}));
-    throw new Error('更新分支引用失败: ' + (errData.message || updateRefResp.status));
-  }
-  return newCommitData.sha;
-}
-
-async function cloudSyncPull(forcePull) {
+async function loadFromCloud() {
   const config = getCloudConfig();
   if (!config || !config.token || cloudSyncBusy) return;
   cloudSyncBusy = true;
-  if (cloudPushTimer) { clearTimeout(cloudPushTimer); cloudPushTimer = null; }
   updateSyncIndicator('syncing');
   try {
-    const fileData = await gitDataReadFile(config);
-    if (!fileData) {
-      // Cloud has no data yet, push local data
+    const url = 'https://api.github.com/repos/' + config.owner + '/' + config.repo + '/contents/' + CLOUD_DATA_FILE + '?ref=' + config.branch + '&t=' + Date.now();
+    const resp = await fetch(url, { headers: { 'Authorization': 'token ' + config.token, 'Cache-Control': 'no-cache' } });
+    if (resp.status === 404) {
+      // No cloud data yet — push local data up
       cloudSyncBusy = false;
-      await cloudSyncPush(true);
+      await saveToCloud(true);
       return;
     }
-    config.fileSha = fileData.sha;
-    setCloudConfig(config);
+    if (!resp.ok) throw new Error('读取云端数据失败 (HTTP ' + resp.status + ')');
+    const fileData = await resp.json();
     const cloudContent = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
-    let localChanged = false;
+
+    // Overwrite ALL local workspaces with cloud data
     WORKSPACES.forEach(ws => {
       if (cloudContent[ws.id]) {
-        const cloudTs = (cloudContent._meta && cloudContent._meta.workspaces && cloudContent._meta.workspaces[ws.id]) || '';
-        const localTs = localStorage.getItem(LAST_MOD_PREFIX + ws.id) || '';
-        if (forcePull || cloudTs > localTs) {
-          localStorage.setItem(DATA_PREFIX + ws.id, JSON.stringify(cloudContent[ws.id]));
-          localStorage.setItem(LAST_MOD_PREFIX + ws.id, cloudTs);
-          localChanged = true;
-        }
+        localStorage.setItem(DATA_PREFIX + ws.id, JSON.stringify(cloudContent[ws.id]));
+        const cloudTs = (cloudContent._meta && cloudContent._meta.workspaces && cloudContent._meta.workspaces[ws.id]) || new Date().toISOString();
+        localStorage.setItem(LAST_MOD_PREFIX + ws.id, cloudTs);
       }
     });
-    if (localChanged) {
-      data = getData();
-      if (!data.plans) data.plans = [];
-      data.projects.forEach(p => { if (!p.milestones) p.milestones = []; });
-      data.follows.forEach(f => { if (!f.milestoneId) f.milestoneId = null; });
-      const activePageEl = Array.from(document.querySelectorAll('.page-content')).find(el => el.style.display !== 'none');
-      const activePage = activePageEl ? activePageEl.id.replace('page-', '') : 'dashboard';
-      if (activePage) showPage(activePage);
-      else showPage('dashboard');
-      updateNavBadges();
-      showToast(forcePull ? '已从云端强制拉取数据' : '已从云端同步最新数据');
-    }
+
+    // Reload data into memory and refresh UI
+    data = getData();
+    if (!data.plans) data.plans = [];
+    data.projects.forEach(p => { if (!p.milestones) p.milestones = []; if (!p.category) p.category = ''; });
+    data.follows.forEach(f => { if (!f.milestoneId) f.milestoneId = null; if (!f.todoId) f.todoId = null; });
+
+    const activePageEl = Array.from(document.querySelectorAll('.page-content')).find(el => el.style.display !== 'none');
+    const activePage = activePageEl ? activePageEl.id.replace('page-', '') : 'calendar';
+    showPage(activePage);
+    updateNavBadges();
+
     config.lastSyncStatus = 'synced';
     config.lastSyncTime = new Date().toISOString();
     config.lastSyncError = null;
     setCloudConfig(config);
     updateSyncIndicator('synced');
-    if (forcePull) {
-      cloudSyncBusy = false;
-      return;
-    }
-    let needPush = false;
-    WORKSPACES.forEach(ws => {
-      const localTs = localStorage.getItem(LAST_MOD_PREFIX + ws.id) || '';
-      const cloudTs = (cloudContent._meta && cloudContent._meta.workspaces && cloudContent._meta.workspaces[ws.id]) || '';
-      if (localTs > cloudTs) needPush = true;
-    });
     cloudSyncBusy = false;
-    if (needPush) await cloudSyncPush();
   } catch(err) {
     config.lastSyncStatus = 'error';
     config.lastSyncError = err.message;
     setCloudConfig(config);
     updateSyncIndicator('error', err.message);
-    showToast('同步失败：' + err.message);
     cloudSyncBusy = false;
   }
 }
+
 let cloudPushTimer = null;
-function cloudSyncPushDebounced() {
+function saveToCloudDebounced() {
   const config = getCloudConfig();
   if (!config || !config.token) return;
   if (cloudPushTimer) clearTimeout(cloudPushTimer);
-  cloudPushTimer = setTimeout(() => cloudSyncPush(), 3000);
+  cloudPushTimer = setTimeout(() => saveToCloud(), 2000);
 }
-async function cloudSyncPush(isFirstPush) {
+
+async function saveToCloud(isFirstPush) {
   const config = getCloudConfig();
   if (!config || !config.token || cloudSyncBusy) return;
   cloudSyncBusy = true;
   if (!isFirstPush) updateSyncIndicator('syncing');
   try {
-    const allData = { _meta: { lastSync: new Date().toISOString(), version: '2', workspaces: {} } };
+    // Collect all workspace data
+    const allData = { _meta: { lastSync: new Date().toISOString(), version: '3', workspaces: {} } };
     WORKSPACES.forEach(ws => {
       const raw = localStorage.getItem(DATA_PREFIX + ws.id);
       if (raw) {
@@ -5087,44 +5001,86 @@ async function cloudSyncPush(isFirstPush) {
       }
     });
     const contentStr = JSON.stringify(allData);
+    const encoded = btoa(unescape(encodeURIComponent(contentStr)));
+    const apiBase = 'https://api.github.com/repos/' + config.owner + '/' + config.repo;
+    const authHeader = { 'Authorization': 'token ' + config.token, 'Content-Type': 'application/json' };
 
-    // Use Git Data API — no SHA matching needed!
-    await gitDataPushFile(config, contentStr);
+    // Git Data API: blob → tree → commit → update ref
+    // Step 1: Get current HEAD commit
+    const refResp = await fetch(apiBase + '/git/refs/heads/' + config.branch, { headers: authHeader });
+    if (!refResp.ok) throw new Error('获取分支失败 (HTTP ' + refResp.status + ')');
+    const commitSha = (await refResp.json()).object.sha;
+
+    // Step 2: Get tree from commit
+    const commitResp = await fetch(apiBase + '/git/commits/' + commitSha, { headers: authHeader });
+    if (!commitResp.ok) throw new Error('获取提交失败 (HTTP ' + commitResp.status + ')');
+    const treeSha = (await commitResp.json()).tree.sha;
+
+    // Step 3: Create blob
+    const blobResp = await fetch(apiBase + '/git/blobs', {
+      method: 'POST', headers: authHeader,
+      body: JSON.stringify({ content: encoded, encoding: 'base64' })
+    });
+    if (!blobResp.ok) throw new Error('创建数据块失败 (HTTP ' + blobResp.status + ')');
+    const blobSha = (await blobResp.json()).sha;
+
+    // Step 4: Create tree
+    const treeResp = await fetch(apiBase + '/git/trees', {
+      method: 'POST', headers: authHeader,
+      body: JSON.stringify({ base_tree: treeSha, tree: [{ path: CLOUD_DATA_FILE, mode: '100644', type: 'blob', sha: blobSha }] })
+    });
+    if (!treeResp.ok) throw new Error('创建目录树失败 (HTTP ' + treeResp.status + ')');
+    const newTreeSha = (await treeResp.json()).sha;
+
+    // Step 5: Create commit
+    const newCommitResp = await fetch(apiBase + '/git/commits', {
+      method: 'POST', headers: authHeader,
+      body: JSON.stringify({ message: 'Sync - ' + new Date().toLocaleString('zh-CN'), tree: newTreeSha, parents: [commitSha] })
+    });
+    if (!newCommitResp.ok) throw new Error('创建提交失败 (HTTP ' + newCommitResp.status + ')');
+    const newCommitSha = (await newCommitResp.json()).sha;
+
+    // Step 6: Update ref (force = true)
+    const updateResp = await fetch(apiBase + '/git/refs/heads/' + config.branch, {
+      method: 'PATCH', headers: authHeader,
+      body: JSON.stringify({ sha: newCommitSha, force: true })
+    });
+    if (!updateResp.ok) {
+      const errInfo = await updateResp.json().catch(() => ({}));
+      throw new Error('更新分支失败: ' + (errInfo.message || 'HTTP ' + updateResp.status));
+    }
 
     config.lastSyncStatus = 'synced';
     config.lastSyncTime = new Date().toISOString();
     config.lastSyncError = null;
     setCloudConfig(config);
     updateSyncIndicator('synced');
-    if (isFirstPush) showToast('数据已上传到云端，其他电脑现在可以同步了');
+    if (isFirstPush) showToast('数据已保存到云端');
     cloudSyncBusy = false;
   } catch(err) {
     config.lastSyncStatus = 'error';
     config.lastSyncError = err.message;
     setCloudConfig(config);
     updateSyncIndicator('error', err.message);
-    showToast('同步失败：' + err.message);
     cloudSyncBusy = false;
   }
 }
 
-// Force pull: overwrite local with cloud data
+// Manual force pull button
 async function cloudSyncForcePull() {
-  const config = getCloudConfig();
-  if (!config || !config.token) { showToast('请先配置云同步'); return; }
-  if (!confirm('确定从云端强制拉取数据吗？本地未同步的修改将被覆盖。')) return;
+  if (!confirm('确定从云端拉取数据？本地未保存的修改将被覆盖。')) return;
   closeModal('syncModal');
   showToast('正在从云端拉取...');
-  await cloudSyncPull(true);
+  await loadFromCloud();
 }
-async function cloudSyncInit(forcePull) {
+
+async function cloudSyncInit() {
   const config = getCloudConfig();
   if (!config || !config.token) {
     updateSyncIndicator('offline');
     return;
   }
-  updateSyncIndicator('syncing');
-  await cloudSyncPull(forcePull);
+  await loadFromCloud();
 }
 
 // ========== Init ==========
@@ -5155,7 +5111,7 @@ const originalSaveData = saveData;
 saveData = function(d) {
   originalSaveData(d);
   updateNavBadges();
-  cloudSyncPushDebounced();
+  saveToCloudDebounced();
 };
 
 // Init
@@ -5164,7 +5120,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (!window.__SYNC_V3__) {
     const url = new URL(window.location.href);
     if (!url.searchParams.get('v')) {
-      url.searchParams.set('v', '3');
+      url.searchParams.set('v', '31');
       window.location.replace(url.toString());
       return;
     }
